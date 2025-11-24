@@ -10,6 +10,7 @@ import Drafts from "./pages/Drafts";
 import Auth from "./pages/Auth";
 import WriterDashboard from "./pages/WriterDashboard";
 import ReaderDashboard from "./pages/ReaderDashboard";
+import AdminDashboard from "./pages/AdminDashboard";
 import Founders from "./pages/Founders";
 import Blog from "./pages/Blog";
 import TalkZone from "./pages/TalkZone";
@@ -35,6 +36,7 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/writer-dashboard" element={<WriterDashboard />} />
           <Route path="/reader-dashboard" element={<ReaderDashboard />} />
+          <Route path="/admin-dashboard" element={<AdminDashboard />} />
           <Route path="/founders" element={<Founders />} />
           <Route path="/blog" element={<Blog />} />
           <Route path="/blog/:id" element={<Blog />} />
