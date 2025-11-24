@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -7,44 +8,58 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Star, Filter } from "lucide-react";
 import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 const Books = () => {
-  const books = Array.from({ length: 12 }, (_, i) => ({
-    id: i + 1,
-    title: [
-      "The Last Symphony",
-      "Digital Horizons",
-      "Whispers in Time",
-      "Mountain Echoes",
-      "Ocean's Memory",
-      "The Silent Garden",
-      "Neon Dreams",
-      "Forgotten Kingdoms",
-      "Starlight Chronicles",
-      "The Paper House",
-      "Urban Legends",
-      "Beyond the Mist"
-    ][i],
-    author: [
-      "Sarah Mitchell",
-      "James Chen",
-      "Emma Rodriguez",
-      "David Thompson",
-      "Lisa Wang",
-      "Marcus Johnson",
-      "Nina Patel",
-      "Alex Rivera",
-      "Sophie Turner",
-      "Ryan Lee",
-      "Maya Singh",
-      "Tom Anderson"
-    ][i],
-    cover: `https://images.unsplash.com/photo-${1543002588 + i * 10000}-bfa74002ed7e?w=400&h=600&fit=crop`,
-    genre: ["Fiction", "Sci-Fi", "Mystery", "Adventure", "Romance", "Thriller"][i % 6],
-    rating: (4.5 + Math.random() * 0.5).toFixed(1),
-    price: `$${(7.99 + Math.random() * 7).toFixed(2)}`,
-    reviews: Math.floor(50 + Math.random() * 450)
-  }));
+  const [books, setBooks] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedGenre, setSelectedGenre] = useState("all");
+
+  useEffect(() => {
+    fetchBooks();
+  }, []);
+
+  const fetchBooks = async () => {
+    setLoading(true);
+    let query = supabase
+      .from("books")
+      .select(`
+        *,
+        profiles (full_name),
+        reviews (rating)
+      `)
+      .eq("status", "published");
+
+    const { data, error } = await query;
+
+    if (!error && data) {
+      // Calculate average rating for each book
+      const booksWithRating = data.map((book: any) => {
+        const ratings = book.reviews?.map((r: any) => r.rating) || [];
+        const avgRating = ratings.length > 0
+          ? (ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length).toFixed(1)
+          : "0.0";
+        return {
+          ...book,
+          rating: avgRating,
+          reviewCount: ratings.length,
+          author: book.profiles?.full_name || "Unknown Author",
+        };
+      });
+      setBooks(booksWithRating);
+    }
+    setLoading(false);
+  };
+
+  const filteredBooks = books.filter((book) => {
+    const matchesSearch =
+      searchQuery === "" ||
+      book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      book.author.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesGenre = selectedGenre === "all" || book.genre === selectedGenre;
+    return matchesSearch && matchesGenre;
+  });
 
   return (
     <div className="min-h-screen bg-background">
@@ -67,23 +82,25 @@ const Books = () => {
               <Input
                 placeholder="Search books or authors..."
                 className="pl-10 h-12"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
           </div>
 
           <div className="flex gap-3">
-            <Select defaultValue="all">
+            <Select value={selectedGenre} onValueChange={setSelectedGenre}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Genre" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Genres</SelectItem>
-                <SelectItem value="fiction">Fiction</SelectItem>
-                <SelectItem value="sci-fi">Sci-Fi</SelectItem>
-                <SelectItem value="mystery">Mystery</SelectItem>
-                <SelectItem value="romance">Romance</SelectItem>
-                <SelectItem value="thriller">Thriller</SelectItem>
-                <SelectItem value="adventure">Adventure</SelectItem>
+                <SelectItem value="Fiction">Fiction</SelectItem>
+                <SelectItem value="Sci-Fi">Sci-Fi</SelectItem>
+                <SelectItem value="Mystery">Mystery</SelectItem>
+                <SelectItem value="Romance">Romance</SelectItem>
+                <SelectItem value="Thriller">Thriller</SelectItem>
+                <SelectItem value="Adventure">Adventure</SelectItem>
               </SelectContent>
             </Select>
 
@@ -111,52 +128,73 @@ const Books = () => {
       <section className="container mx-auto px-4 py-8">
         <div className="mb-6">
           <p className="text-muted-foreground">
-            Showing <span className="font-semibold text-foreground">{books.length}</span> books
+            Showing <span className="font-semibold text-foreground">{filteredBooks.length}</span> books
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-6">
-          {books.map((book) => (
-            <Card key={book.id} className="overflow-hidden hover:shadow-lg transition-all duration-300 group cursor-pointer">
-              <Link to={`/books/${book.id}`}>
-                <div className="aspect-[2/3] overflow-hidden bg-muted">
-                  <img
-                    src={book.cover}
-                    alt={book.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                </div>
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <Badge variant="secondary" className="shrink-0">{book.genre}</Badge>
-                    <div className="flex items-center gap-1">
-                      <Star className="h-3.5 w-3.5 fill-primary text-primary" />
-                      <span className="text-sm font-medium">{book.rating}</span>
-                      <span className="text-xs text-muted-foreground">({book.reviews})</span>
-                    </div>
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+              <p className="mt-4 text-muted-foreground">Loading books...</p>
+            </div>
+          </div>
+        ) : filteredBooks.length === 0 ? (
+          <div className="text-center py-20">
+            <p className="text-muted-foreground text-lg">No books found</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-6">
+            {filteredBooks.map((book) => (
+              <Card key={book.id} className="overflow-hidden hover:shadow-lg transition-all duration-300 group cursor-pointer">
+                <Link to={`/books/${book.id}`}>
+                  <div className="aspect-[2/3] overflow-hidden bg-muted">
+                    {book.cover_url ? (
+                      <img
+                        src={book.cover_url}
+                        alt={book.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-primary/10">
+                        <span className="text-muted-foreground">No cover</span>
+                      </div>
+                    )}
                   </div>
-                  <CardTitle className="text-lg line-clamp-2 group-hover:text-primary transition-colors">
-                    {book.title}
-                  </CardTitle>
-                  <CardDescription className="mt-1">by {book.author}</CardDescription>
-                </CardHeader>
-                <CardFooter className="flex items-center justify-between pt-0">
-                  <span className="text-xl font-bold text-primary">{book.price}</span>
-                  <Button size="sm" variant="secondary" className="group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                    View Book
-                  </Button>
-                </CardFooter>
-              </Link>
-            </Card>
-          ))}
-        </div>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <Badge variant="secondary" className="shrink-0">{book.genre || "General"}</Badge>
+                      <div className="flex items-center gap-1">
+                        <Star className="h-3.5 w-3.5 fill-primary text-primary" />
+                        <span className="text-sm font-medium">{book.rating}</span>
+                        <span className="text-xs text-muted-foreground">({book.reviewCount})</span>
+                      </div>
+                    </div>
+                    <CardTitle className="text-lg line-clamp-2 group-hover:text-primary transition-colors">
+                      {book.title}
+                    </CardTitle>
+                    <CardDescription className="mt-1">by {book.author}</CardDescription>
+                  </CardHeader>
+                  <CardFooter className="flex items-center justify-between pt-0">
+                    <span className="text-xl font-bold text-primary">${Number(book.price).toFixed(2)}</span>
+                    <Button size="sm" variant="secondary" className="group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                      View Book
+                    </Button>
+                  </CardFooter>
+                </Link>
+              </Card>
+            ))}
+          </div>
+        )}
 
         {/* Load More */}
-        <div className="mt-12 text-center">
-          <Button size="lg" variant="outline">
-            Load More Books
-          </Button>
-        </div>
+        {!loading && filteredBooks.length > 0 && (
+          <div className="mt-12 text-center">
+            <Button size="lg" variant="outline">
+              Load More Books
+            </Button>
+          </div>
+        )}
       </section>
 
       <Footer />

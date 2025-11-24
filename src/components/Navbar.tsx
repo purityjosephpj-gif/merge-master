@@ -1,13 +1,24 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { BookOpen, User, Menu } from "lucide-react";
+import { BookOpen, User, Menu, LogOut, Shield, Edit, BookMarked } from "lucide-react";
 import {
   Sheet,
   SheetContent,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { useAuth } from "@/hooks/useAuth";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const Navbar = () => {
+  const { user, hasRole, signOut } = useAuth();
+  
   const navLinks = [
     { to: "/", label: "Home" },
     { to: "/books", label: "Books" },
@@ -44,15 +55,61 @@ const Navbar = () => {
 
           {/* Auth Buttons */}
           <div className="hidden md:flex items-center gap-3">
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/auth">
-                <User className="h-4 w-4 mr-2" />
-                Login
-              </Link>
-            </Button>
-            <Button size="sm" asChild className="bg-gradient-to-r from-primary to-writer-amber">
-              <Link to="/auth?mode=register">Get Started</Link>
-            </Button>
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    <User className="h-4 w-4 mr-2" />
+                    Account
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {hasRole("admin") && (
+                    <DropdownMenuItem asChild>
+                      <Link to="/admin-dashboard" className="flex items-center cursor-pointer">
+                        <Shield className="h-4 w-4 mr-2" />
+                        Admin Dashboard
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  {hasRole("writer") && (
+                    <DropdownMenuItem asChild>
+                      <Link to="/writer-dashboard" className="flex items-center cursor-pointer">
+                        <Edit className="h-4 w-4 mr-2" />
+                        Writer Dashboard
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  {hasRole("reader") && (
+                    <DropdownMenuItem asChild>
+                      <Link to="/reader-dashboard" className="flex items-center cursor-pointer">
+                        <BookMarked className="h-4 w-4 mr-2" />
+                        Reader Dashboard
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={signOut} className="cursor-pointer text-destructive">
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <>
+                <Button variant="ghost" size="sm" asChild>
+                  <Link to="/auth">
+                    <User className="h-4 w-4 mr-2" />
+                    Login
+                  </Link>
+                </Button>
+                <Button size="sm" asChild className="bg-gradient-to-r from-primary to-writer-amber">
+                  <Link to="/auth?mode=register">Get Started</Link>
+                </Button>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu */}
@@ -74,12 +131,47 @@ const Navbar = () => {
                   </Link>
                 ))}
                 <div className="flex flex-col gap-2 mt-4 pt-4 border-t">
-                  <Button variant="outline" asChild>
-                    <Link to="/auth">Login</Link>
-                  </Button>
-                  <Button asChild className="bg-gradient-to-r from-primary to-writer-amber">
-                    <Link to="/auth?mode=register">Get Started</Link>
-                  </Button>
+                  {user ? (
+                    <>
+                      {hasRole("admin") && (
+                        <Button variant="outline" asChild>
+                          <Link to="/admin-dashboard">
+                            <Shield className="h-4 w-4 mr-2" />
+                            Admin
+                          </Link>
+                        </Button>
+                      )}
+                      {hasRole("writer") && (
+                        <Button variant="outline" asChild>
+                          <Link to="/writer-dashboard">
+                            <Edit className="h-4 w-4 mr-2" />
+                            Writer
+                          </Link>
+                        </Button>
+                      )}
+                      {hasRole("reader") && (
+                        <Button variant="outline" asChild>
+                          <Link to="/reader-dashboard">
+                            <BookMarked className="h-4 w-4 mr-2" />
+                            Reader
+                          </Link>
+                        </Button>
+                      )}
+                      <Button variant="destructive" onClick={signOut}>
+                        <LogOut className="h-4 w-4 mr-2" />
+                        Sign Out
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button variant="outline" asChild>
+                        <Link to="/auth">Login</Link>
+                      </Button>
+                      <Button asChild className="bg-gradient-to-r from-primary to-writer-amber">
+                        <Link to="/auth?mode=register">Get Started</Link>
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
             </SheetContent>

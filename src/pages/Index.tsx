@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -6,46 +7,44 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from "@/components/ui/badge";
 import { Search, BookOpen, Users, TrendingUp, Award, Star } from "lucide-react";
 import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
-  const featuredBooks = [
-    {
-      id: 1,
-      title: "The Last Symphony",
-      author: "Sarah Mitchell",
-      cover: "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=400&h=600&fit=crop",
-      genre: "Fiction",
-      rating: 4.8,
-      price: "$9.99"
-    },
-    {
-      id: 2,
-      title: "Digital Horizons",
-      author: "James Chen",
-      cover: "https://images.unsplash.com/photo-1589998059171-988d887df646?w=400&h=600&fit=crop",
-      genre: "Sci-Fi",
-      rating: 4.6,
-      price: "$12.99"
-    },
-    {
-      id: 3,
-      title: "Whispers in Time",
-      author: "Emma Rodriguez",
-      cover: "https://images.unsplash.com/photo-1532012197267-da84d127e765?w=400&h=600&fit=crop",
-      genre: "Mystery",
-      rating: 4.9,
-      price: "$8.99"
-    },
-    {
-      id: 4,
-      title: "Mountain Echoes",
-      author: "David Thompson",
-      cover: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=400&h=600&fit=crop",
-      genre: "Adventure",
-      rating: 4.7,
-      price: "$10.99"
+  const [featuredBooks, setFeaturedBooks] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchFeaturedBooks();
+  }, []);
+
+  const fetchFeaturedBooks = async () => {
+    const { data, error } = await supabase
+      .from("books")
+      .select(`
+        *,
+        profiles (full_name),
+        reviews (rating)
+      `)
+      .eq("status", "published")
+      .order("created_at", { ascending: false })
+      .limit(4);
+
+    if (!error && data) {
+      const booksWithRating = data.map((book: any) => {
+        const ratings = book.reviews?.map((r: any) => r.rating) || [];
+        const avgRating = ratings.length > 0
+          ? (ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length).toFixed(1)
+          : "4.5";
+        return {
+          ...book,
+          rating: avgRating,
+          author: book.profiles?.full_name || "Unknown Author",
+        };
+      });
+      setFeaturedBooks(booksWithRating);
     }
-  ];
+    setLoading(false);
+  };
 
   const upcomingStories = [
     { id: 1, title: "Echoes of Tomorrow", author: "Lisa Wang", chapters: "12/20 chapters" },
@@ -112,35 +111,51 @@ const Index = () => {
         </div>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {featuredBooks.map((book) => (
-            <Card key={book.id} className="overflow-hidden hover:shadow-lg transition-shadow group cursor-pointer">
-              <Link to={`/books/${book.id}`}>
-                <div className="aspect-[2/3] overflow-hidden">
-                  <img
-                    src={book.cover}
-                    alt={book.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                </div>
-                <CardHeader>
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1">
-                      <CardTitle className="text-lg line-clamp-1">{book.title}</CardTitle>
-                      <CardDescription className="mt-1">by {book.author}</CardDescription>
+          {loading ? (
+            <div className="col-span-full flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : featuredBooks.length === 0 ? (
+            <div className="col-span-full text-center py-12 text-muted-foreground">
+              No featured books available yet
+            </div>
+          ) : (
+            featuredBooks.map((book) => (
+              <Card key={book.id} className="overflow-hidden hover:shadow-lg transition-shadow group cursor-pointer">
+                <Link to={`/books/${book.id}`}>
+                  <div className="aspect-[2/3] overflow-hidden">
+                    {book.cover_url ? (
+                      <img
+                        src={book.cover_url}
+                        alt={book.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-primary/10">
+                        <BookOpen className="h-12 w-12 text-primary" />
+                      </div>
+                    )}
+                  </div>
+                  <CardHeader>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1">
+                        <CardTitle className="text-lg line-clamp-1">{book.title}</CardTitle>
+                        <CardDescription className="mt-1">by {book.author}</CardDescription>
+                      </div>
+                      <Badge variant="secondary" className="shrink-0">{book.genre || "Fiction"}</Badge>
                     </div>
-                    <Badge variant="secondary" className="shrink-0">{book.genre}</Badge>
-                  </div>
-                </CardHeader>
-                <CardFooter className="flex items-center justify-between">
-                  <div className="flex items-center gap-1">
-                    <Star className="h-4 w-4 fill-primary text-primary" />
-                    <span className="text-sm font-medium">{book.rating}</span>
-                  </div>
-                  <span className="text-lg font-bold text-primary">{book.price}</span>
-                </CardFooter>
-              </Link>
-            </Card>
-          ))}
+                  </CardHeader>
+                  <CardFooter className="flex items-center justify-between">
+                    <div className="flex items-center gap-1">
+                      <Star className="h-4 w-4 fill-primary text-primary" />
+                      <span className="text-sm font-medium">{book.rating}</span>
+                    </div>
+                    <span className="text-lg font-bold text-primary">${Number(book.price).toFixed(2)}</span>
+                  </CardFooter>
+                </Link>
+              </Card>
+            ))
+          )}
         </div>
       </section>
 
