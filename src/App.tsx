@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Books from "./pages/Books";
 import BookDetail from "./pages/BookDetail";
+import ReadBook from "./pages/ReadBook";
 import Drafts from "./pages/Drafts";
 import Auth from "./pages/Auth";
 import WriterDashboard from "./pages/WriterDashboard";
@@ -31,6 +32,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/books" element={<Books />} />
           <Route path="/books/:id" element={<BookDetail />} />
+          <Route path="/read/:bookId" element={<ReadBook />} />
           <Route path="/drafts" element={<Drafts />} />
           <Route path="/drafts/:id" element={<BookDetail />} />
           <Route path="/auth" element={<Auth />} />

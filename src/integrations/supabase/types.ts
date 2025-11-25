@@ -59,6 +59,51 @@ export type Database = {
           },
         ]
       }
+      bookmarks: {
+        Row: {
+          book_id: string
+          chapter_id: string
+          created_at: string
+          id: string
+          note: string | null
+          position: string | null
+          user_id: string
+        }
+        Insert: {
+          book_id: string
+          chapter_id: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          position?: string | null
+          user_id: string
+        }
+        Update: {
+          book_id?: string
+          chapter_id?: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          position?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookmarks_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookmarks_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "chapters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       books: {
         Row: {
           author_id: string
@@ -296,6 +341,48 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      reading_progress: {
+        Row: {
+          book_id: string
+          chapter_id: string
+          id: string
+          last_read_at: string
+          progress_percentage: number
+          user_id: string
+        }
+        Insert: {
+          book_id: string
+          chapter_id: string
+          id?: string
+          last_read_at?: string
+          progress_percentage?: number
+          user_id: string
+        }
+        Update: {
+          book_id?: string
+          chapter_id?: string
+          id?: string
+          last_read_at?: string
+          progress_percentage?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reading_progress_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reading_progress_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "chapters"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       reviews: {
         Row: {
