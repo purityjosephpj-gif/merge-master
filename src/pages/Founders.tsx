@@ -1,25 +1,44 @@
+import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { BookOpen, TrendingUp, Users, DollarSign } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { Quote } from "lucide-react";
 
 const Founders = () => {
-  const founders = [
-    {
-      name: "You",
-      role: "Co-Founder & CEO",
-      image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop",
-      bio: "Passionate about connecting writers with readers and building a platform that empowers creative storytelling. With a background in technology and literature, I envisioned a space where stories can thrive.",
-      quote: "Every writer deserves a platform, and every reader deserves access to great stories."
-    },
-    {
-      name: "Werukha",
-      role: "Co-Founder & CTO",
-      image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop",
-      bio: "Bringing technical expertise and a love for innovation to make StoryConnect the best platform for writers and readers. Dedicated to creating seamless user experiences and robust infrastructure.",
-      quote: "Technology should serve creativity, not limit it. We're building the future of publishing."
+  const [founders, setFounders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchFounders();
+  }, []);
+
+  const fetchFounders = async () => {
+    const { data } = await supabase
+      .from("founders")
+      .select("*")
+      .order("order_index");
+
+    if (data) {
+      setFounders(data);
     }
-  ];
+    setLoading(false);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">Loading...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -54,34 +73,38 @@ const Founders = () => {
 
       {/* Founders Profiles */}
       <section className="container mx-auto px-4 py-16">
-        <div className="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto">
-          {founders.map((founder) => (
-            <Card key={founder.name} className="overflow-hidden">
-              <div className="aspect-square overflow-hidden">
-                <img
-                  src={founder.image}
-                  alt={founder.name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <CardHeader>
-                <CardTitle className="text-2xl">{founder.name}</CardTitle>
-                <CardDescription className="text-lg">{founder.role}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-muted-foreground leading-relaxed">
-                  {founder.bio}
-                </p>
-                <div className="relative pl-6 border-l-4 border-primary py-2">
-                  <Quote className="absolute -left-3 -top-2 h-6 w-6 text-primary opacity-50" />
-                  <p className="italic text-foreground font-medium">
-                    "{founder.quote}"
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        {founders.length === 0 ? (
+          <div className="text-center text-muted-foreground py-12">
+            No founders information available yet.
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto">
+            {founders.map((founder) => (
+              <Card key={founder.id} className="overflow-hidden">
+                {founder.image_url && (
+                  <div className="aspect-square overflow-hidden">
+                    <img
+                      src={founder.image_url}
+                      alt={founder.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
+                <CardHeader>
+                  <CardTitle className="text-2xl">{founder.name}</CardTitle>
+                  <CardDescription className="text-lg">{founder.role}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {founder.bio && (
+                    <p className="text-muted-foreground leading-relaxed">
+                      {founder.bio}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Mission & Vision */}
