@@ -1,23 +1,152 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BookOpen, TrendingUp, Users, DollarSign, Plus, Edit, Eye } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { BookOpen, TrendingUp, Users, DollarSign, Edit, Trash2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
+import CreateBookDialog from "@/components/CreateBookDialog";
+import ManageChaptersDialog from "@/components/ManageChaptersDialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+interface Book {
+  id: string;
+  title: string;
+  status: string;
+  price: number;
+  total_chapters: number;
+  created_at: string;
+}
 
 const WriterDashboard = () => {
-  const stats = [
-    { label: "Total Books", value: "5", icon: BookOpen, change: "+1 this month" },
-    { label: "Total Readers", value: "12.5K", icon: Users, change: "+2.3K this month" },
-    { label: "Monthly Views", value: "45.2K", icon: Eye, change: "+12% from last month" },
-    { label: "Earnings", value: "$1,234", icon: DollarSign, change: "+$234 this month" }
-  ];
+  const { user, hasRole } = useAuth();
+  const navigate = useNavigate();
+  const [books, setBooks] = useState<Book[]>([]);
+  const [stats, setStats] = useState({
+    totalBooks: 0,
+    totalEarnings: 0,
+    totalReaders: 0,
+    totalReviews: 0,
+  });
+  const [loading, setLoading] = useState(true);
 
-  const myBooks = [
-    { id: 1, title: "The Last Symphony", status: "Published", chapters: 24, views: "15.2K", earnings: "$456" },
-    { id: 2, title: "Digital Dreams", status: "Published", chapters: 18, views: "8.9K", earnings: "$289" },
-    { id: 3, title: "Echoes of Tomorrow", status: "Draft", chapters: "12/20", views: "3.4K", earnings: "$0" }
-  ];
+  useEffect(() => {
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
+
+    if (!hasRole("writer")) {
+      toast.error("Access denied. Writer role required.");
+      navigate("/");
+      return;
+    }
+
+    fetchDashboardData();
+  }, [user, hasRole]);
+
+  const fetchDashboardData = async () => {
+    if (!user) return;
+
+    // Fetch books
+    const { data: booksData } = await supabase
+      .from("books")
+      .select("*")
+      .eq("author_id", user.id)
+      .order("created_at", { ascending: false });
+
+    if (booksData) {
+      setBooks(booksData);
+    }
+
+    // Fetch earnings
+    const { data: purchasesData } = await supabase
+      .from("book_purchases")
+      .select("amount, books!inner(author_id)")
+      .eq("books.author_id", user.id);
+
+    const totalEarnings = purchasesData?.reduce(
+      (sum, p) => sum + parseFloat(p.amount.toString()),
+      0
+    ) || 0;
+
+    // Fetch unique readers
+    const { count: readersCount } = await supabase
+      .from("book_purchases")
+      .select("user_id, books!inner(author_id)", { count: "exact", head: true })
+      .eq("books.author_id", user.id);
+
+    // Fetch reviews
+    const { count: reviewsCount } = await supabase
+      .from("reviews")
+      .select("id, books!inner(author_id)", { count: "exact", head: true })
+      .eq("books.author_id", user.id);
+
+    setStats({
+      totalBooks: booksData?.length || 0,
+      totalEarnings,
+      totalReaders: readersCount || 0,
+      totalReviews: reviewsCount || 0,
+    });
+
+    setLoading(false);
+  };
+
+  const updateBookStatus = async (bookId: string, status: string) => {
+    const { error } = await supabase
+      .from("books")
+      .update({ 
+        status: status as "draft" | "published" | "archived",
+        published_at: status === "published" ? new Date().toISOString() : null
+      })
+      .eq("id", bookId);
+
+    if (error) {
+      toast.error("Failed to update book status");
+      return;
+    }
+
+    toast.success("Book status updated");
+    fetchDashboardData();
+  };
+
+  const deleteBook = async (bookId: string) => {
+    if (!confirm("Are you sure you want to delete this book? This action cannot be undone.")) {
+      return;
+    }
+
+    const { error } = await supabase.from("books").delete().eq("id", bookId);
+
+    if (error) {
+      toast.error("Failed to delete book");
+      return;
+    }
+
+    toast.success("Book deleted");
+    fetchDashboardData();
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">Loading...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -31,10 +160,7 @@ const WriterDashboard = () => {
               <h1 className="text-3xl font-bold mb-2">Writer Dashboard</h1>
               <p className="text-muted-foreground">Manage your books and track your success</p>
             </div>
-            <Button size="lg" className="bg-gradient-to-r from-primary to-writer-amber">
-              <Plus className="h-5 w-5 mr-2" />
-              New Book
-            </Button>
+            <CreateBookDialog onBookCreated={fetchDashboardData} />
           </div>
         </div>
       </section>
@@ -42,27 +168,52 @@ const WriterDashboard = () => {
       <div className="container mx-auto px-4 py-8">
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {stats.map((stat) => (
-            <Card key={stat.label}>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardDescription>{stat.label}</CardDescription>
-                <stat.icon className="h-5 w-5 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold mb-1">{stat.value}</div>
-                <p className="text-xs text-muted-foreground">{stat.change}</p>
-              </CardContent>
-            </Card>
-          ))}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardDescription>Total Books</CardDescription>
+              <BookOpen className="h-5 w-5 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold mb-1">{stats.totalBooks}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardDescription>Total Readers</CardDescription>
+              <Users className="h-5 w-5 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold mb-1">{stats.totalReaders}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardDescription>Total Reviews</CardDescription>
+              <TrendingUp className="h-5 w-5 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold mb-1">{stats.totalReviews}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardDescription>Total Earnings</CardDescription>
+              <DollarSign className="h-5 w-5 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold mb-1">${stats.totalEarnings.toFixed(2)}</div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Main Content */}
         <Tabs defaultValue="books" className="space-y-6">
           <TabsList>
             <TabsTrigger value="books">My Books</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
             <TabsTrigger value="earnings">Earnings</TabsTrigger>
-            <TabsTrigger value="feedback">Feedback</TabsTrigger>
           </TabsList>
 
           <TabsContent value="books" className="space-y-4">
@@ -72,54 +223,62 @@ const WriterDashboard = () => {
                 <CardDescription>Manage your published and draft books</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {myBooks.map((book) => (
-                    <div
-                      key={book.id}
-                      className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-4 flex-1">
-                        <div className="w-12 h-16 bg-primary/10 rounded flex items-center justify-center">
-                          <BookOpen className="h-6 w-6 text-primary" />
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-lg">{book.title}</h3>
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
-                            <span>{book.chapters} chapters</span>
-                            <span>•</span>
-                            <span>{book.views} views</span>
-                            <span>•</span>
-                            <span className="text-primary font-medium">{book.earnings}</span>
+                {books.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No books yet. Create your first book to get started!</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {books.map((book) => (
+                      <div
+                        key={book.id}
+                        className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-4 flex-1">
+                          <div className="w-12 h-16 bg-primary/10 rounded flex items-center justify-center">
+                            <BookOpen className="h-6 w-6 text-primary" />
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-lg">{book.title}</h3>
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                              <span>{book.total_chapters} chapters</span>
+                              <span>•</span>
+                              <span>${book.price}</span>
+                              <span>•</span>
+                              <Badge variant={book.status === "published" ? "default" : "secondary"}>
+                                {book.status}
+                              </Badge>
+                            </div>
                           </div>
                         </div>
+                        <div className="flex items-center gap-2">
+                          <Select
+                            value={book.status}
+                            onValueChange={(value) => updateBookStatus(book.id, value)}
+                          >
+                            <SelectTrigger className="w-32">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="draft">Draft</SelectItem>
+                              <SelectItem value="published">Published</SelectItem>
+                              <SelectItem value="archived">Archived</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <ManageChaptersDialog bookId={book.id} bookTitle={book.title} />
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => deleteBook(book.id)}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm">
-                          <Edit className="h-4 w-4 mr-2" />
-                          Edit
-                        </Button>
-                        <Button variant="outline" size="sm">
-                          <Eye className="h-4 w-4 mr-2" />
-                          View
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="analytics">
-            <Card>
-              <CardHeader>
-                <CardTitle>Analytics Overview</CardTitle>
-                <CardDescription>Track your performance and reader engagement</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[400px] flex items-center justify-center text-muted-foreground">
-                  Analytics charts and graphs will be displayed here
-                </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -127,26 +286,14 @@ const WriterDashboard = () => {
           <TabsContent value="earnings">
             <Card>
               <CardHeader>
-                <CardTitle>Earnings Report</CardTitle>
-                <CardDescription>View your earnings history and payment details</CardDescription>
+                <CardTitle>Earnings Overview</CardTitle>
+                <CardDescription>Track your book sales and revenue</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-[400px] flex items-center justify-center text-muted-foreground">
-                  Earnings breakdown and payment history will be displayed here
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="feedback">
-            <Card>
-              <CardHeader>
-                <CardTitle>Reader Feedback</CardTitle>
-                <CardDescription>Comments and reviews from your readers</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[400px] flex items-center justify-center text-muted-foreground">
-                  Comments and feedback will be displayed here
+                <div className="text-center py-12">
+                  <DollarSign className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <div className="text-3xl font-bold mb-2">${stats.totalEarnings.toFixed(2)}</div>
+                  <p className="text-muted-foreground">Total earnings from {stats.totalReaders} readers</p>
                 </div>
               </CardContent>
             </Card>

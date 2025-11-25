@@ -3,26 +3,38 @@ import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Users, BookOpen, DollarSign, TrendingUp, Shield, Trash2, Edit } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { Users, BookOpen, DollarSign, TrendingUp, Shield, Trash2, Edit } from "lucide-react";
 import { toast } from "sonner";
+import AdminFoundersTab from "@/components/AdminFoundersTab";
 
 const AdminDashboard = () => {
   const { user, hasRole, loading } = useAuth();
   const navigate = useNavigate();
   const [users, setUsers] = useState<any[]>([]);
   const [books, setBooks] = useState<any[]>([]);
+  const [founders, setFounders] = useState<any[]>([]);
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalBooks: 0,
     totalRevenue: 0,
     activeWriters: 0,
   });
+  const [showFounderForm, setShowFounderForm] = useState(false);
+  const [founderForm, setFounderForm] = useState({
+    name: "",
+    role: "",
+    bio: "",
+    linkedin_url: "",
+    twitter_url: "",
+    order_index: 0,
+  });
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
     if (!loading && (!user || !hasRole("admin"))) {
@@ -62,6 +74,16 @@ const AdminDashboard = () => {
 
     if (booksData) {
       setBooks(booksData);
+    }
+
+    // Fetch founders
+    const { data: foundersData } = await supabase
+      .from("founders")
+      .select("*")
+      .order("order_index");
+
+    if (foundersData) {
+      setFounders(foundersData);
     }
 
     // Calculate stats
@@ -134,6 +156,92 @@ const AdminDashboard = () => {
       toast.error("Failed to update book status");
     } else {
       toast.success("Book status updated");
+      fetchDashboardData();
+    }
+  };
+
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload an image file");
+      return;
+    }
+
+    setUploadingImage(true);
+
+    const fileExt = file.name.split(".").pop();
+    const fileName = `${Math.random()}.${fileExt}`;
+    const filePath = `${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("founder-images")
+      .upload(filePath, file);
+
+    if (uploadError) {
+      toast.error("Failed to upload image");
+      setUploadingImage(false);
+      return;
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from("founder-images")
+      .getPublicUrl(filePath);
+
+    setFounderForm({ ...founderForm, image_url: publicUrl } as any);
+    setUploadingImage(false);
+    toast.success("Image uploaded successfully");
+  };
+
+  const handleAddFounder = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const { error } = await supabase.from("founders").insert({
+      name: founderForm.name,
+      role: founderForm.role,
+      bio: founderForm.bio || null,
+      image_url: (founderForm as any).image_url || null,
+      linkedin_url: founderForm.linkedin_url || null,
+      twitter_url: founderForm.twitter_url || null,
+      order_index: founderForm.order_index,
+    });
+
+    if (error) {
+      toast.error("Failed to add founder");
+      return;
+    }
+
+    toast.success("Founder added successfully");
+    setShowFounderForm(false);
+    setFounderForm({
+      name: "",
+      role: "",
+      bio: "",
+      linkedin_url: "",
+      twitter_url: "",
+      order_index: founders.length,
+    });
+    fetchDashboardData();
+  };
+
+  const deleteFounder = async (founderId: string, imageUrl: string | null) => {
+    if (!confirm("Are you sure you want to delete this founder?")) return;
+
+    // Delete image from storage if exists
+    if (imageUrl) {
+      const fileName = imageUrl.split("/").pop();
+      if (fileName) {
+        await supabase.storage.from("founder-images").remove([fileName]);
+      }
+    }
+
+    const { error } = await supabase.from("founders").delete().eq("id", founderId);
+
+    if (error) {
+      toast.error("Failed to delete founder");
+    } else {
+      toast.success("Founder deleted successfully");
       fetchDashboardData();
     }
   };
@@ -220,6 +328,7 @@ const AdminDashboard = () => {
           <TabsList>
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="books">Books</TabsTrigger>
+            <TabsTrigger value="founders">Founders</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
@@ -345,6 +454,20 @@ const AdminDashboard = () => {
                 </Table>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="founders">
+            <AdminFoundersTab
+              founders={founders}
+              showFounderForm={showFounderForm}
+              setShowFounderForm={setShowFounderForm}
+              founderForm={founderForm}
+              setFounderForm={setFounderForm}
+              uploadingImage={uploadingImage}
+              handleImageUpload={handleImageUpload}
+              handleAddFounder={handleAddFounder}
+              deleteFounder={deleteFounder}
+            />
           </TabsContent>
 
           <TabsContent value="analytics">
