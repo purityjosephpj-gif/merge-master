@@ -46,6 +46,58 @@ const AdminDashboard = () => {
   useEffect(() => {
     if (user && hasRole("admin")) {
       fetchDashboardData();
+
+      // Set up real-time subscriptions
+      const usersChannel = supabase
+        .channel("users-changes")
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "profiles",
+          },
+          () => {
+            fetchDashboardData();
+          }
+        )
+        .subscribe();
+
+      const booksChannel = supabase
+        .channel("books-changes")
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "books",
+          },
+          () => {
+            fetchDashboardData();
+          }
+        )
+        .subscribe();
+
+      const foundersChannel = supabase
+        .channel("founders-changes")
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "founders",
+          },
+          () => {
+            fetchDashboardData();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(usersChannel);
+        supabase.removeChannel(booksChannel);
+        supabase.removeChannel(foundersChannel);
+      };
     }
   }, [user, hasRole]);
 

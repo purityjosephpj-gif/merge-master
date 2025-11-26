@@ -36,7 +36,7 @@ const Navbar = () => {
           <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <BookOpen className="h-6 w-6 text-primary" />
             <span className="text-xl font-bold bg-gradient-to-r from-primary to-writer-amber bg-clip-text text-transparent">
-              StoryConnect
+              Pixel & Prose
             </span>
           </Link>
 

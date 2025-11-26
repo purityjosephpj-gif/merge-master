@@ -6,12 +6,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, TrendingUp, Users, DollarSign, Edit, Trash2 } from "lucide-react";
+import { BookOpen, TrendingUp, Users, DollarSign, Trash2, Eye, Star, MessageSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import CreateBookDialog from "@/components/CreateBookDialog";
 import ManageChaptersDialog from "@/components/ManageChaptersDialog";
+import EditBookDialog from "@/components/EditBookDialog";
 import {
   Select,
   SelectContent,
@@ -19,6 +20,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface Book {
   id: string;
@@ -27,6 +36,32 @@ interface Book {
   price: number;
   total_chapters: number;
   created_at: string;
+  description: string | null;
+  genre: string | null;
+  cover_url: string | null;
+  free_chapters: number;
+}
+
+interface BookPerformance {
+  book_id: string;
+  book_title: string;
+  purchases: number;
+  revenue: number;
+  avg_rating: number;
+  reviews_count: number;
+}
+
+interface Review {
+  id: string;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+  profiles: {
+    full_name: string;
+  };
+  books: {
+    title: string;
+  };
 }
 
 const WriterDashboard = () => {
@@ -38,7 +73,10 @@ const WriterDashboard = () => {
     totalEarnings: 0,
     totalReaders: 0,
     totalReviews: 0,
+    avgRating: 0,
   });
+  const [bookPerformance, setBookPerformance] = useState<BookPerformance[]>([]);
+  const [recentReviews, setRecentReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -88,19 +126,77 @@ const WriterDashboard = () => {
       .select("user_id, books!inner(author_id)", { count: "exact", head: true })
       .eq("books.author_id", user.id);
 
-    // Fetch reviews
-    const { count: reviewsCount } = await supabase
+    // Fetch reviews and calculate average rating
+    const { data: reviewsData, count: reviewsCount } = await supabase
       .from("reviews")
-      .select("id, books!inner(author_id)", { count: "exact", head: true })
+      .select("rating, books!inner(author_id)", { count: "exact" })
       .eq("books.author_id", user.id);
+
+    const avgRating = reviewsData && reviewsData.length > 0
+      ? reviewsData.reduce((sum, r) => sum + r.rating, 0) / reviewsData.length
+      : 0;
+
+    // Fetch book performance
+    const bookIds = booksData?.map(b => b.id) || [];
+    const performance: BookPerformance[] = await Promise.all(
+      booksData?.map(async (book) => {
+        const { count: purchases } = await supabase
+          .from("book_purchases")
+          .select("*", { count: "exact", head: true })
+          .eq("book_id", book.id);
+
+        const { data: bookPurchases } = await supabase
+          .from("book_purchases")
+          .select("amount")
+          .eq("book_id", book.id);
+
+        const revenue = bookPurchases?.reduce((sum, p) => sum + parseFloat(p.amount.toString()), 0) || 0;
+
+        const { data: bookReviews, count: reviewsCount } = await supabase
+          .from("reviews")
+          .select("rating", { count: "exact" })
+          .eq("book_id", book.id);
+
+        const avgRating = bookReviews && bookReviews.length > 0
+          ? bookReviews.reduce((sum, r) => sum + r.rating, 0) / bookReviews.length
+          : 0;
+
+        return {
+          book_id: book.id,
+          book_title: book.title,
+          purchases: purchases || 0,
+          revenue,
+          avg_rating: avgRating,
+          reviews_count: reviewsCount || 0,
+        };
+      }) || []
+    );
+
+    // Fetch recent reviews
+    const { data: recentReviewsData } = await supabase
+      .from("reviews")
+      .select(`
+        id,
+        rating,
+        comment,
+        created_at,
+        profiles!inner(full_name),
+        books!inner(title, author_id)
+      `)
+      .eq("books.author_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(10);
 
     setStats({
       totalBooks: booksData?.length || 0,
       totalEarnings,
       totalReaders: readersCount || 0,
       totalReviews: reviewsCount || 0,
+      avgRating,
     });
 
+    setBookPerformance(performance);
+    setRecentReviews(recentReviewsData || []);
     setLoading(false);
   };
 
@@ -172,7 +268,7 @@ const WriterDashboard = () => {
 
       <div className="container mx-auto px-4 py-8">
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardDescription>Total Books</CardDescription>
@@ -195,11 +291,12 @@ const WriterDashboard = () => {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardDescription>Total Reviews</CardDescription>
-              <TrendingUp className="h-5 w-5 text-muted-foreground" />
+              <CardDescription>Avg Rating</CardDescription>
+              <Star className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold mb-1">{stats.totalReviews}</div>
+              <div className="text-3xl font-bold mb-1">{stats.avgRating.toFixed(1)}</div>
+              <p className="text-xs text-muted-foreground">{stats.totalReviews} reviews</p>
             </CardContent>
           </Card>
 
@@ -212,12 +309,27 @@ const WriterDashboard = () => {
               <div className="text-3xl font-bold mb-1">${stats.totalEarnings.toFixed(2)}</div>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardDescription>Engagement</CardDescription>
+              <TrendingUp className="h-5 w-5 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold mb-1">
+                {stats.totalBooks > 0 ? Math.round(stats.totalReaders / stats.totalBooks) : 0}
+              </div>
+              <p className="text-xs text-muted-foreground">Readers per book</p>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Main Content */}
         <Tabs defaultValue="books" className="space-y-6">
           <TabsList>
             <TabsTrigger value="books">My Books</TabsTrigger>
+            <TabsTrigger value="performance">Performance</TabsTrigger>
+            <TabsTrigger value="reviews">Recent Reviews</TabsTrigger>
             <TabsTrigger value="earnings">Earnings</TabsTrigger>
           </TabsList>
 
@@ -271,6 +383,7 @@ const WriterDashboard = () => {
                               <SelectItem value="archived">Archived</SelectItem>
                             </SelectContent>
                           </Select>
+                          <EditBookDialog book={book} onBookUpdated={fetchDashboardData} />
                           <ManageChaptersDialog bookId={book.id} bookTitle={book.title} />
                           <Button
                             variant="ghost"
@@ -280,6 +393,116 @@ const WriterDashboard = () => {
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="performance" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Book Performance</CardTitle>
+                <CardDescription>Track how each book is performing</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {bookPerformance.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No performance data yet</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Book Title</TableHead>
+                        <TableHead className="text-center">Purchases</TableHead>
+                        <TableHead className="text-center">Revenue</TableHead>
+                        <TableHead className="text-center">Avg Rating</TableHead>
+                        <TableHead className="text-center">Reviews</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {bookPerformance.map((perf) => (
+                        <TableRow key={perf.book_id}>
+                          <TableCell className="font-medium">{perf.book_title}</TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              <Eye className="h-4 w-4 text-muted-foreground" />
+                              {perf.purchases}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center font-semibold">
+                            ${perf.revenue.toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                              {perf.avg_rating > 0 ? perf.avg_rating.toFixed(1) : "N/A"}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                              {perf.reviews_count}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="reviews" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Reviews</CardTitle>
+                <CardDescription>Latest feedback from your readers</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {recentReviews.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No reviews yet</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {recentReviews.map((review) => (
+                      <div
+                        key={review.id}
+                        className="p-4 border border-border rounded-lg space-y-2"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold">{review.profiles.full_name}</span>
+                            <Badge variant="secondary" className="text-xs">
+                              {review.books.title}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            {Array.from({ length: 5 }).map((_, i) => (
+                              <Star
+                                key={i}
+                                className={`h-4 w-4 ${
+                                  i < review.rating
+                                    ? "text-yellow-500 fill-yellow-500"
+                                    : "text-muted-foreground"
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        {review.comment && (
+                          <p className="text-sm text-muted-foreground">{review.comment}</p>
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(review.created_at).toLocaleDateString()}
+                        </p>
                       </div>
                     ))}
                   </div>

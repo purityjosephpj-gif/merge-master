@@ -10,7 +10,7 @@ const Footer = () => {
           <div className="space-y-4">
             <Link to="/" className="flex items-center gap-2">
               <BookOpen className="h-6 w-6 text-primary" />
-              <span className="text-lg font-bold">StoryConnect</span>
+              <span className="text-lg font-bold">Pixel & Prose</span>
             </Link>
             <p className="text-sm text-muted-foreground">
               Where Stories Find Their Readers
@@ -101,7 +101,8 @@ const Footer = () => {
         </div>
 
         <div className="mt-8 pt-8 border-t border-border text-center text-sm text-muted-foreground">
-          <p>© 2024 StoryConnect. All rights reserved.</p>
+          <p>© 2024 Pixel & Prose. All rights reserved.</p>
+          <p className="mt-2">Developed by Laban Panda Khisa and Carlos Werukha</p>
         </div>
       </div>
     </footer>
