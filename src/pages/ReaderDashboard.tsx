@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -5,9 +7,25 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { BookOpen, Heart, Star, Clock } from "lucide-react";
-import { Link } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 const ReaderDashboard = () => {
+  const { user, hasRole, loading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (loading) return;
+
+    if (!user || !hasRole("reader")) {
+      if (!user) {
+        navigate("/auth");
+      } else {
+        toast.error("Access denied. Reader role required.");
+        navigate("/");
+      }
+    }
+  }, [user, hasRole, loading, navigate]);
   const currentlyReading = [
     { id: 1, title: "The Last Symphony", author: "Sarah Mitchell", progress: 65, chapter: "Chapter 16 of 24" },
     { id: 2, title: "Digital Horizons", author: "James Chen", progress: 30, chapter: "Chapter 5 of 18" }
@@ -24,6 +42,21 @@ const ReaderDashboard = () => {
     { name: "James Chen", books: 3, avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150" },
     { name: "Emma Rodriguez", books: 7, avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150" }
   ];
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user || !hasRole("reader")) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-background">

@@ -30,7 +30,7 @@ interface Book {
 }
 
 const WriterDashboard = () => {
-  const { user, hasRole } = useAuth();
+  const { user, hasRole, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [books, setBooks] = useState<Book[]>([]);
   const [stats, setStats] = useState({
@@ -42,19 +42,20 @@ const WriterDashboard = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) {
-      navigate("/auth");
-      return;
-    }
+    if (authLoading) return;
 
-    if (!hasRole("writer")) {
-      toast.error("Access denied. Writer role required.");
-      navigate("/");
+    if (!user || !hasRole("writer")) {
+      if (!user) {
+        navigate("/auth");
+      } else {
+        toast.error("Access denied. Writer role required.");
+        navigate("/");
+      }
       return;
     }
 
     fetchDashboardData();
-  }, [user, hasRole]);
+  }, [user, hasRole, authLoading, navigate]);
 
   const fetchDashboardData = async () => {
     if (!user) return;
@@ -137,15 +138,19 @@ const WriterDashboard = () => {
     fetchDashboardData();
   };
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-background">
-        <Navbar />
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading...</p>
         </div>
       </div>
     );
+  }
+
+  if (!user || !hasRole("writer")) {
+    return null;
   }
 
   return (
