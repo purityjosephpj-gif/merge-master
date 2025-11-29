@@ -11,7 +11,8 @@ export const useAuth = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
-  const navigate = useNavigate();
+  const [rolesLoaded, setRolesLoaded] = useState(false);
+   const navigate = useNavigate();
 
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -19,30 +20,42 @@ export const useAuth = () => {
       (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
-        
-        // Fetch roles when user logs in using setTimeout to avoid deadlock
+
         if (session?.user) {
+          // When auth state changes to a logged-in user, refresh roles
+          setRolesLoaded(false);
+          setLoading(true);
           setTimeout(() => {
-            fetchUserRoles(session.user.id);
+            fetchUserRoles(session.user.id).finally(() => {
+              setRolesLoaded(true);
+              setLoading(false);
+            });
           }, 0);
         } else {
+          // When user logs out or session is cleared
           setUserRoles([]);
+          setRolesLoaded(true);
+          setLoading(false);
         }
-        
-        // Set loading to false after auth state is updated
-        setLoading(false);
       }
     );
 
     // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      
+
       if (session?.user) {
-        fetchUserRoles(session.user.id);
+        setRolesLoaded(false);
+        setLoading(true);
+        await fetchUserRoles(session.user.id);
+        setRolesLoaded(true);
+        setLoading(false);
+      } else {
+        setUserRoles([]);
+        setRolesLoaded(true);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
@@ -56,6 +69,9 @@ export const useAuth = () => {
 
     if (!error && data) {
       setUserRoles(data.map(r => r.role as UserRole));
+    } else if (error) {
+      console.error("Failed to fetch user roles", error.message);
+      setUserRoles([]);
     }
   };
 
@@ -127,6 +143,7 @@ export const useAuth = () => {
     session,
     loading,
     userRoles,
+    rolesLoaded,
     hasRole,
     signUp,
     signIn,
