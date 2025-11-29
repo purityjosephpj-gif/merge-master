@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import AdminFoundersTab from "@/components/AdminFoundersTab";
 
 const AdminDashboard = () => {
-  const { user, hasRole, loading } = useAuth();
+  const { user, hasRole, loading, rolesLoaded } = useAuth();
   const navigate = useNavigate();
   const [users, setUsers] = useState<any[]>([]);
   const [books, setBooks] = useState<any[]>([]);
@@ -37,11 +37,13 @@ const AdminDashboard = () => {
   const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
-    if (!loading && (!user || !hasRole("admin"))) {
-      toast.error("Access denied. Admin privileges required.");
-      navigate("/");
+    if (!loading && rolesLoaded) {
+      if (!user || !hasRole("admin")) {
+        toast.error("Access denied. Admin privileges required.");
+        navigate("/");
+      }
     }
-  }, [user, hasRole, loading, navigate]);
+  }, [user, hasRole, loading, rolesLoaded, navigate]);
 
   useEffect(() => {
     if (user && hasRole("admin")) {
