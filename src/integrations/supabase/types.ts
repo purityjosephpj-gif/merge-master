@@ -109,6 +109,41 @@ export type Database = {
           },
         ]
       }
+      book_views: {
+        Row: {
+          book_id: string
+          id: string
+          ip_address: string | null
+          session_id: string | null
+          user_id: string | null
+          viewed_at: string
+        }
+        Insert: {
+          book_id: string
+          id?: string
+          ip_address?: string | null
+          session_id?: string | null
+          user_id?: string | null
+          viewed_at?: string
+        }
+        Update: {
+          book_id?: string
+          id?: string
+          ip_address?: string | null
+          session_id?: string | null
+          user_id?: string | null
+          viewed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "book_views_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bookmarks: {
         Row: {
           book_id: string
@@ -669,6 +704,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_book_view_count: { Args: { book_id_param: string }; Returns: number }
       has_purchased_book: {
         Args: { _book_id: string; _user_id: string }
         Returns: boolean
