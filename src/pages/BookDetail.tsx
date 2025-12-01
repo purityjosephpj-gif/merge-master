@@ -37,11 +37,26 @@ const BookDetail = () => {
     if (id) {
       fetchBookDetails();
       fetchReviews();
+      trackBookView();
       if (user) {
         checkPurchaseStatus();
       }
     }
   }, [id, user]);
+
+  const trackBookView = async () => {
+    // Track book view for analytics
+    await supabase.from('book_views').insert({
+      book_id: id,
+      user_id: user?.id || null,
+      session_id: sessionStorage.getItem('session_id') || crypto.randomUUID(),
+    });
+    
+    // Store session ID if not exists
+    if (!sessionStorage.getItem('session_id')) {
+      sessionStorage.setItem('session_id', crypto.randomUUID());
+    }
+  };
 
   const fetchBookDetails = async () => {
     const { data, error } = await supabase

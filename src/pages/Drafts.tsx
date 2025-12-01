@@ -56,7 +56,7 @@ const Drafts = () => {
     if (error) {
       console.error('Error fetching draft books:', error);
     } else if (books) {
-      // Get stats for each book
+      // Get stats for each book with real view counts
       const booksWithStats = await Promise.all(books.map(async (book) => {
         const { count: chaptersCount } = await supabase
           .from('chapters')
@@ -68,12 +68,17 @@ const Drafts = () => {
           .select('*', { count: 'exact', head: true })
           .eq('book_id', book.id);
 
-        // Mock views for now - you can add a views column later
+        // Get real view count
+        const { count: viewsCount } = await supabase
+          .from('book_views')
+          .select('*', { count: 'exact', head: true })
+          .eq('book_id', book.id);
+
         return {
           ...book,
           chaptersPublished: chaptersCount || 0,
           followers: favoritesCount || 0,
-          views: Math.floor(Math.random() * 10000) + 1000,
+          views: viewsCount || 0,
         };
       }));
 

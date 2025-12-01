@@ -539,19 +539,150 @@ const AdminDashboard = () => {
           </TabsContent>
 
           <TabsContent value="settings">
-            <Card>
-              <CardHeader>
-                <CardTitle>Platform Settings</CardTitle>
-                <CardDescription>Configure platform-wide settings</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="h-[400px] flex items-center justify-center text-muted-foreground">
-                    Platform settings and configuration options will be displayed here
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Authentication Settings</CardTitle>
+                  <CardDescription>Configure user authentication and security</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <label className="text-sm font-medium">Email Verification</label>
+                      <p className="text-sm text-muted-foreground">Require email verification for new accounts</p>
+                    </div>
+                    <Button variant="outline" size="sm">Configure</Button>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <label className="text-sm font-medium">Password Requirements</label>
+                      <p className="text-sm text-muted-foreground">Set minimum password strength requirements</p>
+                    </div>
+                    <Button variant="outline" size="sm">Configure</Button>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <label className="text-sm font-medium">Session Duration</label>
+                      <p className="text-sm text-muted-foreground">Configure user session timeout</p>
+                    </div>
+                    <Button variant="outline" size="sm">Configure</Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Content Moderation</CardTitle>
+                  <CardDescription>Manage content policies and moderation tools</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <label className="text-sm font-medium">Book Approval</label>
+                      <p className="text-sm text-muted-foreground">Require admin approval before publishing</p>
+                    </div>
+                    <Button variant="outline" size="sm">Enable</Button>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <label className="text-sm font-medium">Comment Moderation</label>
+                      <p className="text-sm text-muted-foreground">Review comments before they appear publicly</p>
+                    </div>
+                    <Button variant="outline" size="sm">Enable</Button>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <label className="text-sm font-medium">Content Filters</label>
+                      <p className="text-sm text-muted-foreground">Configure automated content filtering</p>
+                    </div>
+                    <Button variant="outline" size="sm">Configure</Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Payment & Revenue</CardTitle>
+                  <CardDescription>Configure payment processing and revenue settings</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <label className="text-sm font-medium">Revenue Share</label>
+                      <p className="text-sm text-muted-foreground">Author revenue share percentage</p>
+                    </div>
+                    <Button variant="outline" size="sm">Configure</Button>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <label className="text-sm font-medium">Minimum Payout</label>
+                      <p className="text-sm text-muted-foreground">Minimum balance for author withdrawals</p>
+                    </div>
+                    <Button variant="outline" size="sm">Configure</Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Email Notifications</CardTitle>
+                  <CardDescription>Configure automated email notifications</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <label className="text-sm font-medium">Welcome Emails</label>
+                      <p className="text-sm text-muted-foreground">Send welcome email to new users</p>
+                    </div>
+                    <Button variant="outline" size="sm">Enable</Button>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <label className="text-sm font-medium">Purchase Confirmations</label>
+                      <p className="text-sm text-muted-foreground">Send email after successful purchase</p>
+                    </div>
+                    <Button variant="outline" size="sm">Enable</Button>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <label className="text-sm font-medium">Author Notifications</label>
+                      <p className="text-sm text-muted-foreground">Notify authors of new reviews and sales</p>
+                    </div>
+                    <Button variant="outline" size="sm">Enable</Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Platform Information</CardTitle>
+                  <CardDescription>Update platform metadata and SEO</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <label className="text-sm font-medium">Platform Name</label>
+                      <p className="text-sm text-muted-foreground">Display name for the platform</p>
+                    </div>
+                    <Button variant="outline" size="sm">Edit</Button>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <label className="text-sm font-medium">Meta Description</label>
+                      <p className="text-sm text-muted-foreground">SEO description for search engines</p>
+                    </div>
+                    <Button variant="outline" size="sm">Edit</Button>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <label className="text-sm font-medium">Contact Email</label>
+                      <p className="text-sm text-muted-foreground">Primary contact email for support</p>
+                    </div>
+                    <Button variant="outline" size="sm">Edit</Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
       </div>
