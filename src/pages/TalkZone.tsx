@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,70 +7,111 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MessageCircle, TrendingUp, Plus, Eye, Heart } from "lucide-react";
 import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 const TalkZone = () => {
-  const categories = [
-    { name: "General Discussion", count: 234, color: "bg-primary" },
-    { name: "Writing Help", count: 156, color: "bg-writer-amber" },
-    { name: "Book Recommendations", count: 189, color: "bg-reader-blue" },
-    { name: "Author Q&A", count: 98, color: "bg-accent" },
-    { name: "Industry News", count: 67, color: "bg-primary" }
-  ];
+  const [categories, setCategories] = useState<any[]>([]);
+  const [discussions, setDiscussions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const trendingTopics = [
-    {
-      id: 1,
-      title: "What are your favorite books of 2024?",
-      author: {
-        name: "Sarah M.",
-        avatar: "https://i.pravatar.cc/150?img=1"
-      },
-      category: "General Discussion",
-      replies: 45,
-      views: 892,
-      likes: 23,
-      lastActivity: "2 hours ago"
-    },
-    {
-      id: 2,
-      title: "Tips for overcoming writer's block?",
-      author: {
-        name: "James T.",
-        avatar: "https://i.pravatar.cc/150?img=2"
-      },
-      category: "Writing Help",
-      replies: 32,
-      views: 567,
-      likes: 18,
-      lastActivity: "4 hours ago"
-    },
-    {
-      id: 3,
-      title: "How do you build tension in mystery novels?",
-      author: {
-        name: "Emma R.",
-        avatar: "https://i.pravatar.cc/150?img=3"
-      },
-      category: "Writing Help",
-      replies: 28,
-      views: 453,
-      likes: 15,
-      lastActivity: "6 hours ago"
-    },
-    {
-      id: 4,
-      title: "Best platforms for book marketing?",
-      author: {
-        name: "David L.",
-        avatar: "https://i.pravatar.cc/150?img=4"
-      },
-      category: "Industry News",
-      replies: 41,
-      views: 789,
-      likes: 31,
-      lastActivity: "8 hours ago"
+  useEffect(() => {
+    fetchData();
+
+    // Real-time subscriptions
+    const discussionsChannel = supabase
+      .channel('discussions-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'discussions'
+        },
+        () => {
+          fetchData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(discussionsChannel);
+    };
+  }, []);
+
+  const fetchData = async () => {
+    // Fetch categories with discussion counts
+    const { data: categoriesData } = await supabase
+      .from('discussion_categories')
+      .select('*')
+      .order('name');
+
+    if (categoriesData) {
+      const categoriesWithCounts = await Promise.all(
+        categoriesData.map(async (category) => {
+          const { count } = await supabase
+            .from('discussions')
+            .select('*', { count: 'exact', head: true })
+            .eq('category_id', category.id);
+          
+          return {
+            ...category,
+            count: count || 0
+          };
+        })
+      );
+      setCategories(categoriesWithCounts);
     }
-  ];
+
+    // Fetch discussions with replies count
+    const { data: discussionsData } = await supabase
+      .from('discussions')
+      .select(`
+        *,
+        profiles:author_id (
+          full_name,
+          avatar_url
+        ),
+        discussion_categories (
+          name
+        )
+      `)
+      .order('updated_at', { ascending: false })
+      .limit(20);
+
+    if (discussionsData) {
+      const discussionsWithStats = await Promise.all(
+        discussionsData.map(async (discussion) => {
+          const { count: repliesCount } = await supabase
+            .from('discussion_replies')
+            .select('*', { count: 'exact', head: true })
+            .eq('discussion_id', discussion.id);
+          
+          return {
+            ...discussion,
+            replies: repliesCount || 0
+          };
+        })
+      );
+      setDiscussions(discussionsWithStats);
+    }
+
+    setLoading(false);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container mx-auto px-4 py-12 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-4 text-muted-foreground">Loading discussions...</p>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -148,59 +190,70 @@ const TalkZone = () => {
 
             {/* Discussion Threads */}
             <div className="space-y-4">
-              {trendingTopics.map((topic) => (
-                <Card key={topic.id} className="hover:shadow-lg transition-shadow cursor-pointer">
-                  <Link to={`/talk-zone/${topic.id}`}>
-                    <CardHeader>
-                      <div className="flex items-start gap-4">
-                        <Avatar className="h-12 w-12">
-                          <AvatarImage src={topic.author.avatar} />
-                          <AvatarFallback>{topic.author.name[0]}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Badge variant="secondary">{topic.category}</Badge>
+              {discussions.length === 0 ? (
+                <div className="text-center py-12">
+                  <MessageCircle className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                  <h2 className="text-2xl font-bold mb-2">No Discussions Yet</h2>
+                  <p className="text-muted-foreground mb-6">
+                    Be the first to start a conversation!
+                  </p>
+                  <Button className="bg-gradient-to-r from-primary to-writer-amber">
+                    <Plus className="h-5 w-5 mr-2" />
+                    Start a Discussion
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  {discussions.map((discussion) => (
+                    <Card key={discussion.id} className="hover:shadow-lg transition-shadow cursor-pointer">
+                      <Link to={`/talk-zone/${discussion.id}`}>
+                        <CardHeader>
+                          <div className="flex items-start gap-4">
+                            <Avatar className="h-12 w-12">
+                              <AvatarImage src={discussion.profiles?.avatar_url} />
+                              <AvatarFallback>{discussion.profiles?.full_name?.[0] || 'U'}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Badge variant="secondary">
+                                  {discussion.discussion_categories?.name || 'General'}
+                                </Badge>
+                                <span className="text-sm text-muted-foreground">
+                                  Posted by {discussion.profiles?.full_name || 'Unknown'}
+                                </span>
+                              </div>
+                              <CardTitle className="text-xl hover:text-primary transition-colors line-clamp-2">
+                                {discussion.title}
+                              </CardTitle>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                              <div className="flex items-center gap-1">
+                                <MessageCircle className="h-4 w-4" />
+                                <span>{discussion.replies} replies</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Eye className="h-4 w-4" />
+                                <span>{discussion.views} views</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Heart className="h-4 w-4" />
+                                <span>{discussion.likes} likes</span>
+                              </div>
+                            </div>
                             <span className="text-sm text-muted-foreground">
-                              Posted by {topic.author.name}
+                              {new Date(discussion.updated_at).toLocaleDateString()}
                             </span>
                           </div>
-                          <CardTitle className="text-xl hover:text-primary transition-colors line-clamp-2">
-                            {topic.title}
-                          </CardTitle>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-6 text-sm text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <MessageCircle className="h-4 w-4" />
-                            <span>{topic.replies} replies</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Eye className="h-4 w-4" />
-                            <span>{topic.views} views</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Heart className="h-4 w-4" />
-                            <span>{topic.likes} likes</span>
-                          </div>
-                        </div>
-                        <span className="text-sm text-muted-foreground">
-                          Last activity {topic.lastActivity}
-                        </span>
-                      </div>
-                    </CardContent>
-                  </Link>
-                </Card>
-              ))}
-            </div>
-
-            {/* Load More */}
-            <div className="text-center pt-4">
-              <Button size="lg" variant="outline">
-                Load More Discussions
-              </Button>
+                        </CardContent>
+                      </Link>
+                    </Card>
+                  ))}
+                </>
+              )}
             </div>
           </div>
         </div>
