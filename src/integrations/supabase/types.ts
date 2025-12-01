@@ -14,6 +14,56 @@ export type Database = {
   }
   public: {
     Tables: {
+      blog_posts: {
+        Row: {
+          author_id: string
+          category: string
+          content: string
+          cover_image_url: string | null
+          created_at: string | null
+          excerpt: string | null
+          id: string
+          published_at: string | null
+          read_time: number | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          author_id: string
+          category: string
+          content: string
+          cover_image_url?: string | null
+          created_at?: string | null
+          excerpt?: string | null
+          id?: string
+          published_at?: string | null
+          read_time?: number | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          author_id?: string
+          category?: string
+          content?: string
+          cover_image_url?: string | null
+          created_at?: string | null
+          excerpt?: string | null
+          id?: string
+          published_at?: string | null
+          read_time?: number | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blog_posts_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       book_purchases: {
         Row: {
           amount: number
@@ -239,6 +289,123 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      discussion_categories: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      discussion_replies: {
+        Row: {
+          author_id: string
+          content: string
+          created_at: string | null
+          discussion_id: string
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          author_id: string
+          content: string
+          created_at?: string | null
+          discussion_id: string
+          id?: string
+          updated_at?: string | null
+        }
+        Update: {
+          author_id?: string
+          content?: string
+          created_at?: string | null
+          discussion_id?: string
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discussion_replies_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discussion_replies_discussion_id_fkey"
+            columns: ["discussion_id"]
+            isOneToOne: false
+            referencedRelation: "discussions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      discussions: {
+        Row: {
+          author_id: string
+          category_id: string | null
+          content: string
+          created_at: string | null
+          id: string
+          likes: number | null
+          title: string
+          updated_at: string | null
+          views: number | null
+        }
+        Insert: {
+          author_id: string
+          category_id?: string | null
+          content: string
+          created_at?: string | null
+          id?: string
+          likes?: number | null
+          title: string
+          updated_at?: string | null
+          views?: number | null
+        }
+        Update: {
+          author_id?: string
+          category_id?: string | null
+          content?: string
+          created_at?: string | null
+          id?: string
+          likes?: number | null
+          title?: string
+          updated_at?: string | null
+          views?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discussions_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discussions_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "discussion_categories"
             referencedColumns: ["id"]
           },
         ]

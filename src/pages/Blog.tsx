@@ -1,35 +1,87 @@
+import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
+import { Search, FileText } from "lucide-react";
 import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 const Blog = () => {
+  const [posts, setPosts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("All");
+
   const categories = ["All", "Writing Tips", "Author Interviews", "Industry News", "Reading Culture", "Publishing Advice"];
 
-  const posts = Array.from({ length: 9 }, (_, i) => ({
-    id: i + 1,
-    title: [
-      "10 Tips for Writing Compelling Characters",
-      "How to Build Your Author Platform",
-      "The Art of Crafting Perfect Opening Lines",
-      "Interview with Bestselling Author Sarah Mitchell",
-      "Understanding Book Marketing in 2024",
-      "Creating Tension in Your Story",
-      "The Power of Reader Communities",
-      "Self-Publishing vs Traditional Publishing",
-      "Writing Realistic Dialogue"
-    ][i],
-    excerpt: "Discover essential techniques and insights that will help you improve your writing craft and connect with your audience...",
-    category: categories[(i % 5) + 1],
-    image: `https://images.unsplash.com/photo-${1516414447565 + i * 10000}-b14be0aeb4e6?w=800&h=500&fit=crop`,
-    author: "Editorial Team",
-    date: `${Math.floor(1 + Math.random() * 14)} days ago`,
-    readTime: `${Math.floor(3 + Math.random() * 7)} min read`
-  }));
+  useEffect(() => {
+    fetchBlogPosts();
+
+    // Real-time subscription
+    const channel = supabase
+      .channel('blog-posts-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'blog_posts'
+        },
+        () => {
+          fetchBlogPosts();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const fetchBlogPosts = async () => {
+    const { data, error } = await supabase
+      .from('blog_posts')
+      .select(`
+        *,
+        profiles:author_id (
+          full_name,
+          avatar_url
+        )
+      `)
+      .order('published_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching blog posts:', error);
+    } else if (data) {
+      setPosts(data);
+    }
+    setLoading(false);
+  };
+
+  const filteredPosts = posts.filter(post => {
+    const matchesSearch = post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         post.excerpt?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = selectedCategory === "All" || post.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container mx-auto px-4 py-12 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-4 text-muted-foreground">Loading blog posts...</p>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -54,6 +106,8 @@ const Blog = () => {
             <Input
               placeholder="Search articles..."
               className="pl-10 h-12"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
 
@@ -62,8 +116,9 @@ const Blog = () => {
             {categories.map((category) => (
               <Badge
                 key={category}
-                variant={category === "All" ? "default" : "secondary"}
+                variant={category === selectedCategory ? "default" : "secondary"}
                 className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors px-4 py-2"
+                onClick={() => setSelectedCategory(category)}
               >
                 {category}
               </Badge>
@@ -72,81 +127,53 @@ const Blog = () => {
         </div>
       </section>
 
-      {/* Featured Post */}
-      <section className="container mx-auto px-4 py-8">
-        <Card className="overflow-hidden max-w-6xl mx-auto hover:shadow-lg transition-shadow">
-          <Link to="/blog/1">
-            <div className="grid md:grid-cols-2 gap-0">
-              <div className="aspect-video md:aspect-auto overflow-hidden">
-                <img
-                  src="https://images.unsplash.com/photo-1455390582262-044cdead277a?w=800&h=600&fit=crop"
-                  alt="Featured post"
-                  className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
-                />
-              </div>
-              <div className="p-8 flex flex-col justify-center">
-                <Badge className="w-fit mb-4">Featured</Badge>
-                <CardTitle className="text-3xl mb-4 hover:text-primary transition-colors">
-                  The Complete Guide to Self-Publishing in 2024
-                </CardTitle>
-                <CardDescription className="text-base mb-6">
-                  Everything you need to know about self-publishing your book, from manuscript preparation to marketing strategies. Learn from successful indie authors and industry experts.
-                </CardDescription>
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  <span>Editorial Team</span>
-                  <span>•</span>
-                  <span>10 min read</span>
-                  <span>•</span>
-                  <span>2 days ago</span>
-                </div>
-              </div>
-            </div>
-          </Link>
-        </Card>
-      </section>
-
       {/* Blog Posts Grid */}
       <section className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {posts.map((post) => (
-            <Card key={post.id} className="overflow-hidden hover:shadow-lg transition-shadow group">
-              <Link to={`/blog/${post.id}`}>
-                <div className="aspect-video overflow-hidden">
-                  <img
-                    src={post.image}
-                    alt={post.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                </div>
-                <CardHeader>
-                  <Badge className="w-fit mb-2" variant="secondary">{post.category}</Badge>
-                  <CardTitle className="text-lg line-clamp-2 group-hover:text-primary transition-colors">
-                    {post.title}
-                  </CardTitle>
-                  <CardDescription className="line-clamp-2">
-                    {post.excerpt}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                    <span>{post.author}</span>
-                    <span>•</span>
-                    <span>{post.readTime}</span>
-                    <span>•</span>
-                    <span>{post.date}</span>
-                  </div>
-                </CardContent>
-              </Link>
-            </Card>
-          ))}
-        </div>
-
-        {/* Load More */}
-        <div className="mt-12 text-center">
-          <Button size="lg" variant="outline">
-            Load More Articles
-          </Button>
-        </div>
+        {filteredPosts.length === 0 ? (
+          <div className="text-center py-12">
+            <FileText className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+            <h2 className="text-2xl font-bold mb-2">No Blog Posts Yet</h2>
+            <p className="text-muted-foreground mb-6">
+              Check back soon for writing tips, author interviews, and industry insights!
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredPosts.map((post) => (
+              <Card key={post.id} className="overflow-hidden hover:shadow-lg transition-shadow group">
+                <Link to={`/blog/${post.id}`}>
+                  {post.cover_image_url && (
+                    <div className="aspect-video overflow-hidden">
+                      <img
+                        src={post.cover_image_url}
+                        alt={post.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                    </div>
+                  )}
+                  <CardHeader>
+                    <Badge className="w-fit mb-2" variant="secondary">{post.category}</Badge>
+                    <CardTitle className="text-lg line-clamp-2 group-hover:text-primary transition-colors">
+                      {post.title}
+                    </CardTitle>
+                    <CardDescription className="line-clamp-2">
+                      {post.excerpt || post.content?.substring(0, 150) + '...'}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <span>{post.profiles?.full_name || 'Admin'}</span>
+                      <span>•</span>
+                      <span>{post.read_time} min read</span>
+                      <span>•</span>
+                      <span>{new Date(post.published_at).toLocaleDateString()}</span>
+                    </div>
+                  </CardContent>
+                </Link>
+              </Card>
+            ))}
+          </div>
+        )}
       </section>
 
       <Footer />
