@@ -11,14 +11,18 @@ import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
   const [featuredBooks, setFeaturedBooks] = useState<any[]>([]);
+  const [upcomingStories, setUpcomingStories] = useState<any[]>([]);
+  const [featuredAuthors, setFeaturedAuthors] = useState<any[]>([]);
+  const [blogPosts, setBlogPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchFeaturedBooks();
+    fetchAllData();
   }, []);
 
-  const fetchFeaturedBooks = async () => {
-    const { data, error } = await supabase
+  const fetchAllData = async () => {
+    // Fetch featured books
+    const { data: booksData } = await supabase
       .from("books")
       .select(`
         *,
@@ -29,8 +33,8 @@ const Index = () => {
       .order("created_at", { ascending: false })
       .limit(4);
 
-    if (!error && data) {
-      const booksWithRating = data.map((book: any) => {
+    if (booksData) {
+      const booksWithRating = booksData.map((book: any) => {
         const ratings = book.reviews?.map((r: any) => r.rating) || [];
         const avgRating = ratings.length > 0
           ? (ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length).toFixed(1)
@@ -43,20 +47,89 @@ const Index = () => {
       });
       setFeaturedBooks(booksWithRating);
     }
+
+    // Fetch upcoming/draft stories
+    const { data: draftsData } = await supabase
+      .from("books")
+      .select(`
+        *,
+        profiles (full_name),
+        chapters (count)
+      `)
+      .eq("status", "draft")
+      .order("updated_at", { ascending: false })
+      .limit(3);
+
+    if (draftsData) {
+      const draftsWithInfo = await Promise.all(draftsData.map(async (book: any) => {
+        const { count: chaptersCount } = await supabase
+          .from("chapters")
+          .select("*", { count: "exact", head: true })
+          .eq("book_id", book.id);
+        
+        return {
+          id: book.id,
+          title: book.title,
+          author: book.profiles?.full_name || "Unknown Author",
+          chapters: `${chaptersCount || 0}/${book.total_chapters || 0} chapters`,
+        };
+      }));
+      setUpcomingStories(draftsWithInfo);
+    }
+
+    // Fetch featured authors (writers with most books)
+    const { data: writersData } = await supabase
+      .from("user_roles")
+      .select(`
+        user_id,
+        profiles (
+          id,
+          full_name,
+          avatar_url
+        )
+      `)
+      .eq("role", "writer")
+      .limit(3);
+
+    if (writersData) {
+      const authorsWithStats = await Promise.all(writersData.map(async (writer: any) => {
+        const { count: booksCount } = await supabase
+          .from("books")
+          .select("*", { count: "exact", head: true })
+          .eq("author_id", writer.user_id);
+
+        const { count: followersCount } = await supabase
+          .from("follows")
+          .select("*", { count: "exact", head: true })
+          .eq("author_id", writer.user_id);
+
+        return {
+          id: writer.user_id,
+          name: writer.profiles?.full_name || "Unknown Author",
+          books: booksCount || 0,
+          followers: followersCount || 0,
+          avatar: writer.profiles?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${writer.user_id}`,
+        };
+      }));
+      setFeaturedAuthors(authorsWithStats);
+    }
+
+    // Fetch recent blog posts
+    const { data: postsData } = await supabase
+      .from("blog_posts")
+      .select(`
+        *,
+        profiles (full_name)
+      `)
+      .order("published_at", { ascending: false })
+      .limit(3);
+
+    if (postsData) {
+      setBlogPosts(postsData);
+    }
+
     setLoading(false);
   };
-
-  const upcomingStories = [
-    { id: 1, title: "Echoes of Tomorrow", author: "Lisa Wang", chapters: "12/20 chapters" },
-    { id: 2, title: "The Hidden Garden", author: "Marcus Johnson", chapters: "8/15 chapters" },
-    { id: 3, title: "Shadows of the Past", author: "Nina Patel", chapters: "15/25 chapters" }
-  ];
-
-  const featuredAuthors = [
-    { name: "Sarah Mitchell", books: 5, followers: "12.5K", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop" },
-    { name: "James Chen", books: 3, followers: "8.2K", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop" },
-    { name: "Emma Rodriguez", books: 7, followers: "15.8K", avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop" }
-  ];
 
   return (
     <div className="min-h-screen bg-background">
@@ -172,22 +245,28 @@ const Index = () => {
             </Button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {upcomingStories.map((story) => (
-              <Card key={story.id} className="hover:shadow-lg transition-shadow cursor-pointer">
-                <Link to={`/drafts/${story.id}`}>
-                  <CardHeader>
-                    <Badge className="w-fit mb-2" variant="secondary">In Progress</Badge>
-                    <CardTitle>{story.title}</CardTitle>
-                    <CardDescription>by {story.author}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground">{story.chapters} published</p>
-                  </CardContent>
-                </Link>
-              </Card>
-            ))}
-          </div>
+          {upcomingStories.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              No upcoming stories available yet
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {upcomingStories.map((story) => (
+                <Card key={story.id} className="hover:shadow-lg transition-shadow cursor-pointer">
+                  <Link to={`/books/${story.id}`}>
+                    <CardHeader>
+                      <Badge className="w-fit mb-2" variant="secondary">In Progress</Badge>
+                      <CardTitle>{story.title}</CardTitle>
+                      <CardDescription>by {story.author}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground">{story.chapters} published</p>
+                    </CardContent>
+                  </Link>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -195,33 +274,39 @@ const Index = () => {
       <section className="container mx-auto px-4 py-16">
         <h2 className="text-3xl font-bold mb-8">Featured Authors</h2>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {featuredAuthors.map((author) => (
-            <Card key={author.name} className="text-center hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <div className="w-24 h-24 mx-auto mb-4 rounded-full overflow-hidden">
-                  <img src={author.avatar} alt={author.name} className="w-full h-full object-cover" />
-                </div>
-                <CardTitle>{author.name}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex justify-center gap-6 text-sm">
-                  <div>
-                    <p className="font-bold text-lg">{author.books}</p>
-                    <p className="text-muted-foreground">Books</p>
+        {featuredAuthors.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            No featured authors available yet
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {featuredAuthors.map((author) => (
+              <Card key={author.id} className="text-center hover:shadow-lg transition-shadow">
+                <CardHeader>
+                  <div className="w-24 h-24 mx-auto mb-4 rounded-full overflow-hidden">
+                    <img src={author.avatar} alt={author.name} className="w-full h-full object-cover" />
                   </div>
-                  <div>
-                    <p className="font-bold text-lg">{author.followers}</p>
-                    <p className="text-muted-foreground">Followers</p>
+                  <CardTitle>{author.name}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex justify-center gap-6 text-sm">
+                    <div>
+                      <p className="font-bold text-lg">{author.books}</p>
+                      <p className="text-muted-foreground">Books</p>
+                    </div>
+                    <div>
+                      <p className="font-bold text-lg">{author.followers}</p>
+                      <p className="text-muted-foreground">Followers</p>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button variant="outline" className="w-full">Follow</Button>
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
+                </CardContent>
+                <CardFooter>
+                  <Button variant="outline" className="w-full">Follow</Button>
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Why Join Section */}
@@ -285,32 +370,36 @@ const Index = () => {
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[1, 2, 3].map((i) => (
-            <Card key={i} className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
-              <Link to={`/blog/${i}`}>
-                <div className="aspect-video overflow-hidden">
-                  <img
-                    src={`https://images.unsplash.com/photo-${1516414447565 + i * 1000}-b14be0aeb4e6?w=600&h=400&fit=crop`}
-                    alt="Blog post"
-                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                  />
-                </div>
-                <CardHeader>
-                  <Badge className="w-fit mb-2">Writing Tips</Badge>
-                  <CardTitle className="line-clamp-2">
-                    {i === 1 && "10 Tips for Writing Compelling Characters"}
-                    {i === 2 && "How to Build Your Author Platform"}
-                    {i === 3 && "The Art of Crafting Perfect Opening Lines"}
-                  </CardTitle>
-                  <CardDescription className="line-clamp-2">
-                    Learn the essential techniques that will help you improve your writing craft...
-                  </CardDescription>
-                </CardHeader>
-              </Link>
-            </Card>
-          ))}
-        </div>
+        {blogPosts.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            No blog posts available yet
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {blogPosts.map((post) => (
+              <Card key={post.id} className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
+                <Link to={`/blog/${post.id}`}>
+                  {post.cover_image_url && (
+                    <div className="aspect-video overflow-hidden">
+                      <img
+                        src={post.cover_image_url}
+                        alt={post.title}
+                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                      />
+                    </div>
+                  )}
+                  <CardHeader>
+                    <Badge className="w-fit mb-2">{post.category}</Badge>
+                    <CardTitle className="line-clamp-2">{post.title}</CardTitle>
+                    {post.excerpt && (
+                      <CardDescription className="line-clamp-2">{post.excerpt}</CardDescription>
+                    )}
+                  </CardHeader>
+                </Link>
+              </Card>
+            ))}
+          </div>
+        )}
       </section>
 
       <Footer />
