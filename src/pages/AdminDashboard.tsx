@@ -12,6 +12,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { Users, BookOpen, DollarSign, TrendingUp, Shield, Trash2, Edit } from "lucide-react";
 import { toast } from "sonner";
 import AdminFoundersTab from "@/components/AdminFoundersTab";
+import { RoleManagement } from "@/components/RoleManagement";
+import { WriterApprovals } from "@/components/WriterApprovals";
 
 const AdminDashboard = () => {
   const { user, hasRole, loading, rolesLoaded } = useAuth();
@@ -381,6 +383,8 @@ const AdminDashboard = () => {
         <Tabs defaultValue="users" className="space-y-6">
           <TabsList>
             <TabsTrigger value="users">Users</TabsTrigger>
+            <TabsTrigger value="roles">Roles</TabsTrigger>
+            <TabsTrigger value="writers">Writer Approvals</TabsTrigger>
             <TabsTrigger value="books">Books</TabsTrigger>
             <TabsTrigger value="founders">Founders</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
@@ -439,6 +443,14 @@ const AdminDashboard = () => {
                 </Table>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="roles" className="space-y-4">
+            <RoleManagement />
+          </TabsContent>
+
+          <TabsContent value="writers" className="space-y-4">
+            <WriterApprovals />
           </TabsContent>
 
           <TabsContent value="books">

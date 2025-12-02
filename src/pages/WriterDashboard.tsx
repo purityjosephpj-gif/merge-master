@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import CreateBookDialog from "@/components/CreateBookDialog";
 import ManageChaptersDialog from "@/components/ManageChaptersDialog";
 import EditBookDialog from "@/components/EditBookDialog";
+import { AuthorProfile } from "@/components/AuthorProfile";
 import {
   Select,
   SelectContent,
@@ -328,6 +329,7 @@ const WriterDashboard = () => {
         <Tabs defaultValue="books" className="space-y-6">
           <TabsList>
             <TabsTrigger value="books">My Books</TabsTrigger>
+            <TabsTrigger value="profile">Author Profile</TabsTrigger>
             <TabsTrigger value="performance">Performance</TabsTrigger>
             <TabsTrigger value="reviews">Recent Reviews</TabsTrigger>
             <TabsTrigger value="earnings">Earnings</TabsTrigger>
@@ -360,6 +362,8 @@ const WriterDashboard = () => {
                             <h3 className="font-semibold text-lg">{book.title}</h3>
                             <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
                               <span>{book.total_chapters} chapters</span>
+                              <span>•</span>
+                              <span>{book.free_chapters} free</span>
                               <span>•</span>
                               <span>${book.price}</span>
                               <span>•</span>
@@ -399,6 +403,10 @@ const WriterDashboard = () => {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="profile" className="space-y-4">
+            <AuthorProfile />
           </TabsContent>
 
           <TabsContent value="performance" className="space-y-4">
