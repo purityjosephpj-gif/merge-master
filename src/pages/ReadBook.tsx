@@ -32,6 +32,7 @@ const ReadBook = () => {
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [currentChapterIndex, setCurrentChapterIndex] = useState(0);
   const [bookTitle, setBookTitle] = useState("");
+  const [freeChaptersCount, setFreeChaptersCount] = useState(5);
   const [hasPurchased, setHasPurchased] = useState(false);
   const [bookmarks, setBookmarks] = useState<Set<string>>(new Set());
   const [showChapterList, setShowChapterList] = useState(false);
@@ -51,12 +52,13 @@ const ReadBook = () => {
     // Fetch book info
     const { data: bookData } = await supabase
       .from("books")
-      .select("title")
+      .select("title, free_chapters")
       .eq("id", bookId)
       .single();
 
     if (bookData) {
       setBookTitle(bookData.title);
+      setFreeChaptersCount(bookData.free_chapters || 5);
     }
 
     // Check if user purchased the book
@@ -144,13 +146,17 @@ const ReadBook = () => {
     }
   };
 
+  const isChapterFree = (chapterNumber: number) => {
+    return chapterNumber <= freeChaptersCount;
+  };
+
   const navigateChapter = (direction: "prev" | "next") => {
     const newIndex =
       direction === "prev" ? currentChapterIndex - 1 : currentChapterIndex + 1;
 
     if (newIndex >= 0 && newIndex < chapters.length) {
       const chapter = chapters[newIndex];
-      if (!chapter.is_free && !hasPurchased) {
+      if (!isChapterFree(chapter.chapter_number) && !hasPurchased) {
         toast.error("Please purchase the book to read this chapter");
         return;
       }
@@ -162,7 +168,7 @@ const ReadBook = () => {
 
   const goToChapter = (index: number) => {
     const chapter = chapters[index];
-    if (!chapter.is_free && !hasPurchased) {
+    if (!isChapterFree(chapter.chapter_number) && !hasPurchased) {
       toast.error("Please purchase the book to read this chapter");
       return;
     }
@@ -195,7 +201,7 @@ const ReadBook = () => {
   }
 
   const currentChapter = chapters[currentChapterIndex];
-  const canRead = currentChapter.is_free || hasPurchased;
+  const canRead = isChapterFree(currentChapter.chapter_number) || hasPurchased;
 
   return (
     <div className="min-h-screen bg-background">
@@ -246,18 +252,19 @@ const ReadBook = () => {
                   <button
                     key={chapter.id}
                     onClick={() => goToChapter(index)}
-                    disabled={!chapter.is_free && !hasPurchased}
+                    disabled={!isChapterFree(chapter.chapter_number) && !hasPurchased}
                     className={cn(
                       "w-full text-left px-3 py-2 rounded-md text-sm transition-colors",
                       index === currentChapterIndex
                         ? "bg-primary text-primary-foreground"
                         : "hover:bg-muted",
-                      !chapter.is_free && !hasPurchased && "opacity-50 cursor-not-allowed"
+                      !isChapterFree(chapter.chapter_number) && !hasPurchased && "opacity-50 cursor-not-allowed"
                     )}
                   >
                     <div className="flex items-center justify-between">
                       <span>
-                        {chapter.chapter_number}. {chapter.title}
+                        {chapter.chapter_number}. {chapter.title}{" "}
+                        {!isChapterFree(chapter.chapter_number) && !hasPurchased && "🔒"}
                       </span>
                       {bookmarks.has(chapter.id) && (
                         <BookmarkCheck className="h-4 w-4" />
