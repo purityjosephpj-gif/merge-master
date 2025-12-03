@@ -136,7 +136,17 @@ export const useAuth = () => {
     navigate("/");
   };
 
-  const hasRole = (role: UserRole) => userRoles.includes(role);
+  const hasRole = (role: UserRole) => {
+    // Admins have all privileges including writer
+    if (userRoles.includes("admin") && (role === "writer" || role === "reader")) {
+      return true;
+    }
+    // Writers also have reader privileges
+    if (userRoles.includes("writer") && role === "reader") {
+      return true;
+    }
+    return userRoles.includes(role);
+  };
 
   return {
     user,

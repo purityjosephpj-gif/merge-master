@@ -14,6 +14,7 @@ import CreateBookDialog from "@/components/CreateBookDialog";
 import ManageChaptersDialog from "@/components/ManageChaptersDialog";
 import EditBookDialog from "@/components/EditBookDialog";
 import { AuthorProfile } from "@/components/AuthorProfile";
+import { WritingAssistant } from "@/components/WritingAssistant";
 import {
   Select,
   SelectContent,
@@ -329,6 +330,7 @@ const WriterDashboard = () => {
         <Tabs defaultValue="books" className="space-y-6">
           <TabsList>
             <TabsTrigger value="books">My Books</TabsTrigger>
+            <TabsTrigger value="writing">Writing Assistant</TabsTrigger>
             <TabsTrigger value="profile">Author Profile</TabsTrigger>
             <TabsTrigger value="performance">Performance</TabsTrigger>
             <TabsTrigger value="reviews">Recent Reviews</TabsTrigger>
@@ -403,6 +405,10 @@ const WriterDashboard = () => {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="writing" className="space-y-4">
+            <WritingAssistant />
           </TabsContent>
 
           <TabsContent value="profile" className="space-y-4">

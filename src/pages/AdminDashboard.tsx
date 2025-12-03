@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import AdminFoundersTab from "@/components/AdminFoundersTab";
 import { RoleManagement } from "@/components/RoleManagement";
 import { WriterApprovals } from "@/components/WriterApprovals";
+import { UserManagement } from "@/components/UserManagement";
 
 const AdminDashboard = () => {
   const { user, hasRole, loading, rolesLoaded } = useAuth();
@@ -392,57 +393,7 @@ const AdminDashboard = () => {
           </TabsList>
 
           <TabsContent value="users">
-            <Card>
-              <CardHeader>
-                <CardTitle>User Management</CardTitle>
-                <CardDescription>View and manage all platform users</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Roles</TableHead>
-                      <TableHead>Joined</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {users.map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell className="font-medium">{user.full_name}</TableCell>
-                        <TableCell>{user.id}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-1 flex-wrap">
-                            {user.user_roles?.map((ur: any, idx: number) => (
-                              <Badge key={idx} variant="secondary">
-                                {ur.role}
-                              </Badge>
-                            ))}
-                          </div>
-                        </TableCell>
-                        <TableCell>{new Date(user.created_at).toLocaleDateString()}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button variant="outline" size="sm">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => deleteUser(user.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+            <UserManagement />
           </TabsContent>
 
           <TabsContent value="roles" className="space-y-4">
