@@ -6,8 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Star, BookOpen, Clock, Users, ShoppingCart } from "lucide-react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { Star, BookOpen, Clock, Users, ShoppingCart, Loader2 } from "lucide-react";
+import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import ReviewForm from "@/components/ReviewForm";
@@ -27,11 +27,24 @@ interface Review {
 const BookDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const [book, setBook] = useState<any>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [hasPurchased, setHasPurchased] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [purchasing, setPurchasing] = useState(false);
+
+  useEffect(() => {
+    // Handle purchase success/cancel from Stripe redirect
+    const purchaseStatus = searchParams.get("purchase");
+    if (purchaseStatus === "success") {
+      toast.success("Purchase successful! You now have full access to this book.");
+      setHasPurchased(true);
+    } else if (purchaseStatus === "canceled") {
+      toast.info("Purchase was canceled.");
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (id) {
@@ -126,6 +139,35 @@ const BookDetail = () => {
     navigate(`/read/${id}`);
   };
 
+  const handlePurchase = async () => {
+    if (!user) {
+      toast.error("Please sign in to purchase this book");
+      navigate("/auth");
+      return;
+    }
+
+    setPurchasing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-book-checkout", {
+        body: {
+          bookId: book.id,
+          bookTitle: book.title,
+          price: book.price,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.url) {
+        window.open(data.url, "_blank");
+      }
+    } catch (error) {
+      console.error("Purchase error:", error);
+      toast.error("Failed to start checkout. Please try again.");
+    } finally {
+      setPurchasing(false);
+    }
+  };
+
   const calculateAverageRating = () => {
     if (reviews.length === 0) return 0;
     const sum = reviews.reduce((acc, review) => acc + review.rating, 0);
@@ -178,9 +220,18 @@ const BookDetail = () => {
                 </Button>
               ) : (
                 <>
-                  <Button size="lg" className="w-full bg-gradient-to-r from-primary to-writer-amber">
-                    <ShoppingCart className="h-5 w-5 mr-2" />
-                    Buy Now - ${book.price}
+                  <Button 
+                    size="lg" 
+                    className="w-full bg-gradient-to-r from-primary to-writer-amber"
+                    onClick={handlePurchase}
+                    disabled={purchasing}
+                  >
+                    {purchasing ? (
+                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                    ) : (
+                      <ShoppingCart className="h-5 w-5 mr-2" />
+                    )}
+                    {purchasing ? "Processing..." : `Buy Now - $${book.price}`}
                   </Button>
                   <Button size="lg" variant="outline" className="w-full" onClick={handleReadBook}>
                     <BookOpen className="h-5 w-5 mr-2" />
@@ -290,8 +341,17 @@ const BookDetail = () => {
                     {book.total_chapters - freeChapters.length} more chapters available after purchase
                   </p>
                   {!hasPurchased && (
-                    <Button className="bg-gradient-to-r from-primary to-writer-amber">
-                      Buy Full Book - ${book.price}
+                    <Button 
+                      className="bg-gradient-to-r from-primary to-writer-amber"
+                      onClick={handlePurchase}
+                      disabled={purchasing}
+                    >
+                      {purchasing ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <ShoppingCart className="h-4 w-4 mr-2" />
+                      )}
+                      {purchasing ? "Processing..." : `Buy Full Book - $${book.price}`}
                     </Button>
                   )}
                 </div>
