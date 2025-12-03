@@ -67,22 +67,44 @@ const Navbar = () => {
                   <DropdownMenuLabel>My Account</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   {hasRole("admin") && (
-                    <DropdownMenuItem asChild>
-                      <Link to="/admin-dashboard" className="flex items-center cursor-pointer">
-                        <Shield className="h-4 w-4 mr-2" />
-                        Admin Dashboard
-                      </Link>
-                    </DropdownMenuItem>
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link to="/admin-dashboard" className="flex items-center cursor-pointer">
+                          <Shield className="h-4 w-4 mr-2" />
+                          Admin Dashboard
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/writer-dashboard" className="flex items-center cursor-pointer">
+                          <Edit className="h-4 w-4 mr-2" />
+                          Writer Dashboard
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/reader-dashboard" className="flex items-center cursor-pointer">
+                          <BookMarked className="h-4 w-4 mr-2" />
+                          Reader Dashboard
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
                   )}
-                  {hasRole("writer") && (
-                    <DropdownMenuItem asChild>
-                      <Link to="/writer-dashboard" className="flex items-center cursor-pointer">
-                        <Edit className="h-4 w-4 mr-2" />
-                        Writer Dashboard
-                      </Link>
-                    </DropdownMenuItem>
+                  {!hasRole("admin") && hasRole("writer") && (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link to="/writer-dashboard" className="flex items-center cursor-pointer">
+                          <Edit className="h-4 w-4 mr-2" />
+                          Writer Dashboard
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/reader-dashboard" className="flex items-center cursor-pointer">
+                          <BookMarked className="h-4 w-4 mr-2" />
+                          Reader Dashboard
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
                   )}
-                  {hasRole("reader") && (
+                  {!hasRole("admin") && !hasRole("writer") && hasRole("reader") && (
                     <DropdownMenuItem asChild>
                       <Link to="/reader-dashboard" className="flex items-center cursor-pointer">
                         <BookMarked className="h-4 w-4 mr-2" />
@@ -134,22 +156,44 @@ const Navbar = () => {
                   {user ? (
                     <>
                       {hasRole("admin") && (
-                        <Button variant="outline" asChild>
-                          <Link to="/admin-dashboard">
-                            <Shield className="h-4 w-4 mr-2" />
-                            Admin
-                          </Link>
-                        </Button>
+                        <>
+                          <Button variant="outline" asChild>
+                            <Link to="/admin-dashboard">
+                              <Shield className="h-4 w-4 mr-2" />
+                              Admin
+                            </Link>
+                          </Button>
+                          <Button variant="outline" asChild>
+                            <Link to="/writer-dashboard">
+                              <Edit className="h-4 w-4 mr-2" />
+                              Writer
+                            </Link>
+                          </Button>
+                          <Button variant="outline" asChild>
+                            <Link to="/reader-dashboard">
+                              <BookMarked className="h-4 w-4 mr-2" />
+                              Reader
+                            </Link>
+                          </Button>
+                        </>
                       )}
-                      {hasRole("writer") && (
-                        <Button variant="outline" asChild>
-                          <Link to="/writer-dashboard">
-                            <Edit className="h-4 w-4 mr-2" />
-                            Writer
-                          </Link>
-                        </Button>
+                      {!hasRole("admin") && hasRole("writer") && (
+                        <>
+                          <Button variant="outline" asChild>
+                            <Link to="/writer-dashboard">
+                              <Edit className="h-4 w-4 mr-2" />
+                              Writer
+                            </Link>
+                          </Button>
+                          <Button variant="outline" asChild>
+                            <Link to="/reader-dashboard">
+                              <BookMarked className="h-4 w-4 mr-2" />
+                              Reader
+                            </Link>
+                          </Button>
+                        </>
                       )}
-                      {hasRole("reader") && (
+                      {!hasRole("admin") && !hasRole("writer") && hasRole("reader") && (
                         <Button variant="outline" asChild>
                           <Link to="/reader-dashboard">
                             <BookMarked className="h-4 w-4 mr-2" />
