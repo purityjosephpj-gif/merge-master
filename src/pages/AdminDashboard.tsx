@@ -22,6 +22,7 @@ const AdminDashboard = () => {
   const [users, setUsers] = useState<any[]>([]);
   const [books, setBooks] = useState<any[]>([]);
   const [founders, setFounders] = useState<any[]>([]);
+  const [statsLoading, setStatsLoading] = useState(true);
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalBooks: 0,
@@ -107,68 +108,33 @@ const AdminDashboard = () => {
   }, [user, hasRole]);
 
   const fetchDashboardData = async () => {
-    // Fetch users with their roles
-    const { data: usersData } = await supabase
-      .from("profiles")
-      .select(`
-        *,
-        user_roles (role)
-      `)
-      .order("created_at", { ascending: false });
+    try {
+      // Fetch all data in parallel for better performance
+      const [usersResult, booksResult, foundersResult, profilesCountResult, booksCountResult, purchasesResult, writersCountResult] = await Promise.all([
+        supabase.from("profiles").select(`*, user_roles (role)`).order("created_at", { ascending: false }),
+        supabase.from("books").select(`*, profiles (full_name)`).order("created_at", { ascending: false }),
+        supabase.from("founders").select("*").order("order_index"),
+        supabase.from("profiles").select("*", { count: "exact", head: true }),
+        supabase.from("books").select("*", { count: "exact", head: true }),
+        supabase.from("book_purchases").select("amount"),
+        supabase.from("user_roles").select("*", { count: "exact", head: true }).eq("role", "writer"),
+      ]);
 
-    if (usersData) {
-      setUsers(usersData);
+      if (usersResult.data) setUsers(usersResult.data);
+      if (booksResult.data) setBooks(booksResult.data);
+      if (foundersResult.data) setFounders(foundersResult.data);
+
+      const totalRevenue = purchasesResult.data?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
+
+      setStats({
+        totalUsers: profilesCountResult.count || 0,
+        totalBooks: booksCountResult.count || 0,
+        totalRevenue,
+        activeWriters: writersCountResult.count || 0,
+      });
+    } finally {
+      setStatsLoading(false);
     }
-
-    // Fetch books
-    const { data: booksData } = await supabase
-      .from("books")
-      .select(`
-        *,
-        profiles (full_name)
-      `)
-      .order("created_at", { ascending: false });
-
-    if (booksData) {
-      setBooks(booksData);
-    }
-
-    // Fetch founders
-    const { data: foundersData } = await supabase
-      .from("founders")
-      .select("*")
-      .order("order_index");
-
-    if (foundersData) {
-      setFounders(foundersData);
-    }
-
-    // Calculate stats
-    const { count: profilesCount } = await supabase
-      .from("profiles")
-      .select("*", { count: "exact", head: true });
-
-    const { count: booksCount } = await supabase
-      .from("books")
-      .select("*", { count: "exact", head: true });
-
-    const { data: purchases } = await supabase
-      .from("book_purchases")
-      .select("amount");
-
-    const totalRevenue = purchases?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
-
-    const { count: writersCount } = await supabase
-      .from("user_roles")
-      .select("*", { count: "exact", head: true })
-      .eq("role", "writer");
-
-    setStats({
-      totalUsers: profilesCount || 0,
-      totalBooks: booksCount || 0,
-      totalRevenue,
-      activeWriters: writersCount || 0,
-    });
   };
 
   const deleteUser = async (userId: string) => {
@@ -341,7 +307,11 @@ const AdminDashboard = () => {
               <Users className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{stats.totalUsers}</div>
+              {statsLoading ? (
+                <div className="h-9 w-16 bg-muted animate-pulse rounded" />
+              ) : (
+                <div className="text-3xl font-bold">{stats.totalUsers}</div>
+              )}
               <p className="text-xs text-muted-foreground">Registered accounts</p>
             </CardContent>
           </Card>
@@ -352,7 +322,11 @@ const AdminDashboard = () => {
               <BookOpen className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{stats.totalBooks}</div>
+              {statsLoading ? (
+                <div className="h-9 w-16 bg-muted animate-pulse rounded" />
+              ) : (
+                <div className="text-3xl font-bold">{stats.totalBooks}</div>
+              )}
               <p className="text-xs text-muted-foreground">Published & drafts</p>
             </CardContent>
           </Card>
@@ -363,7 +337,11 @@ const AdminDashboard = () => {
               <DollarSign className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">${stats.totalRevenue.toFixed(2)}</div>
+              {statsLoading ? (
+                <div className="h-9 w-24 bg-muted animate-pulse rounded" />
+              ) : (
+                <div className="text-3xl font-bold">${stats.totalRevenue.toFixed(2)}</div>
+              )}
               <p className="text-xs text-muted-foreground">All time</p>
             </CardContent>
           </Card>
@@ -374,7 +352,11 @@ const AdminDashboard = () => {
               <TrendingUp className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{stats.activeWriters}</div>
+              {statsLoading ? (
+                <div className="h-9 w-16 bg-muted animate-pulse rounded" />
+              ) : (
+                <div className="text-3xl font-bold">{stats.activeWriters}</div>
+              )}
               <p className="text-xs text-muted-foreground">Content creators</p>
             </CardContent>
           </Card>
