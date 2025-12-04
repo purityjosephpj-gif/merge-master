@@ -99,16 +99,13 @@ export const UserManagement = () => {
 
   const addRoleToUser = async (userId: string, role: string) => {
     setLoading(true);
+    // Use security definer function to bypass RLS
     const { error } = await supabase
-      .from("user_roles")
-      .insert({ user_id: userId, role: role as "admin" | "writer" | "reader" });
+      .rpc("assign_user_role", { _user_id: userId, _role: role as "admin" | "writer" | "reader" });
 
     if (error) {
-      if (error.code === "23505") {
-        toast.error("User already has this role");
-      } else {
-        toast.error("Failed to add role");
-      }
+      console.error("Role assignment error:", error);
+      toast.error("Failed to add role: " + error.message);
     } else {
       toast.success(`${role} role added successfully`);
       fetchUsers();

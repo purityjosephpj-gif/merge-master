@@ -743,6 +743,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      assign_user_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: undefined
+      }
       get_book_view_count: { Args: { book_id_param: string }; Returns: number }
       has_purchased_book: {
         Args: { _book_id: string; _user_id: string }
