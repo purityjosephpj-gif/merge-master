@@ -228,13 +228,17 @@ export const UserManagement = () => {
                     )}
                   </div>
                 </TableCell>
-                <TableCell>
+              <TableCell>
                   {user.writer_approved === false && user.user_roles?.some(r => r.role === "writer") ? (
                     <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600">
                       Pending Approval
                     </Badge>
-                  ) : (
+                  ) : user.writer_approved === true ? (
                     <Badge variant="outline" className="bg-green-500/10 text-green-600">
+                      Approved Writer
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="bg-blue-500/10 text-blue-600">
                       Active
                     </Badge>
                   )}

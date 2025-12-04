@@ -74,25 +74,16 @@ export const WriterApprovals = () => {
       return;
     }
 
-    // Check if user already has writer role
-    const { data: existingRole } = await supabase
-      .from("user_roles")
-      .select("id")
-      .eq("user_id", userId)
-      .eq("role", "writer")
-      .maybeSingle();
+    // Use security definer function to assign writer role
+    const { error: roleError } = await supabase.rpc("assign_user_role", {
+      _user_id: userId,
+      _role: "writer" as const,
+    });
 
-    // Add writer role if not exists
-    if (!existingRole) {
-      const { error: roleError } = await supabase.from("user_roles").insert({
-        user_id: userId,
-        role: "writer",
-      });
-
-      if (roleError) {
-        toast.error("Failed to assign writer role");
-        return;
-      }
+    if (roleError) {
+      console.error("Role assignment error:", roleError);
+      toast.error("Failed to assign writer role");
+      return;
     }
 
     toast.success("Writer approved successfully");

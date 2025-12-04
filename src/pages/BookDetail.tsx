@@ -179,7 +179,10 @@ const BookDetail = () => {
       <div className="min-h-screen bg-background">
         <Navbar />
         <div className="container mx-auto px-4 py-8">
-          <div className="text-center">Loading...</div>
+          <div className="flex flex-col items-center justify-center min-h-[50vh]">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+            <p className="text-muted-foreground">Loading book details...</p>
+          </div>
         </div>
       </div>
     );
@@ -208,10 +211,15 @@ const BookDetail = () => {
         <div className="grid md:grid-cols-[300px,1fr] gap-8 mb-12">
           {/* Book Cover */}
           <div className="space-y-4">
-            <div className="aspect-[2/3] rounded-lg overflow-hidden shadow-lg">
-              <img src={book.cover} alt={book.title} className="w-full h-full object-cover" />
+            <div className="aspect-[2/3] rounded-lg overflow-hidden shadow-lg bg-muted">
+              {book.cover_url ? (
+                <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <BookOpen className="h-16 w-16 text-muted-foreground" />
+                </div>
+              )}
             </div>
-            
             <div className="space-y-2">
               {hasPurchased ? (
                 <Button size="lg" className="w-full" onClick={handleReadBook}>
