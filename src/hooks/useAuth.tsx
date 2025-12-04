@@ -94,13 +94,13 @@ export const useAuth = () => {
       return { error };
     }
 
-    // Insert the role after user is created
+    // Assign role using security definer function (bypasses RLS)
     if (data.user) {
       const { error: roleError } = await supabase
-        .from("user_roles")
-        .insert({ user_id: data.user.id, role });
+        .rpc("assign_user_role", { _user_id: data.user.id, _role: role });
 
       if (roleError) {
+        console.error("Role assignment error:", roleError);
         toast.error("Failed to assign role");
         return { error: roleError };
       }
