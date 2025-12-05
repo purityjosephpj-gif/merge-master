@@ -6,8 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Star, BookOpen, Clock, Users, ShoppingCart, Loader2 } from "lucide-react";
-import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Star, BookOpen, Users, ShoppingCart, Loader2 } from "lucide-react";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import ReviewForm from "@/components/ReviewForm";
@@ -36,7 +36,6 @@ const BookDetail = () => {
   const [purchasing, setPurchasing] = useState(false);
 
   useEffect(() => {
-    // Handle purchase success/cancel from Stripe redirect
     const purchaseStatus = searchParams.get("purchase");
     if (purchaseStatus === "success") {
       toast.success("Purchase successful! You now have full access to this book.");
@@ -58,21 +57,19 @@ const BookDetail = () => {
   }, [id, user]);
 
   const trackBookView = async () => {
-    // Track book view for analytics
     await supabase.from('book_views').insert({
       book_id: id,
       user_id: user?.id || null,
       session_id: sessionStorage.getItem('session_id') || crypto.randomUUID(),
     });
     
-    // Store session ID if not exists
     if (!sessionStorage.getItem('session_id')) {
       sessionStorage.setItem('session_id', crypto.randomUUID());
     }
   };
 
   const fetchBookDetails = async () => {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("books")
       .select(`
         *,
@@ -131,11 +128,6 @@ const BookDetail = () => {
   };
 
   const handleReadBook = () => {
-    if (!user) {
-      toast.error("Please sign in to read this book");
-      navigate("/auth");
-      return;
-    }
     navigate(`/read/${id}`);
   };
 
@@ -207,9 +199,7 @@ const BookDetail = () => {
       <Navbar />
 
       <div className="container mx-auto px-4 py-8">
-        {/* Book Header */}
         <div className="grid md:grid-cols-[300px,1fr] gap-8 mb-12">
-          {/* Book Cover */}
           <div className="space-y-4">
             <div className="aspect-[2/3] rounded-lg overflow-hidden shadow-lg bg-muted">
               {book.cover_url ? (
@@ -239,7 +229,7 @@ const BookDetail = () => {
                     ) : (
                       <ShoppingCart className="h-5 w-5 mr-2" />
                     )}
-                    {purchasing ? "Processing..." : `Buy Now - $${book.price}`}
+                    {purchasing ? "Processing..." : `Buy Now - KSH ${book.price}`}
                   </Button>
                   <Button size="lg" variant="outline" className="w-full" onClick={handleReadBook}>
                     <BookOpen className="h-5 w-5 mr-2" />
@@ -267,7 +257,6 @@ const BookDetail = () => {
             </Card>
           </div>
 
-          {/* Book Info */}
           <div className="space-y-6">
             <div>
               <div className="flex items-center gap-2 mb-3">
@@ -307,7 +296,6 @@ const BookDetail = () => {
           </div>
         </div>
 
-        {/* Tabs Section */}
         <Tabs defaultValue="preview" className="space-y-6">
           <TabsList className="grid w-full max-w-md grid-cols-3">
             <TabsTrigger value="preview">Preview</TabsTrigger>
@@ -318,7 +306,7 @@ const BookDetail = () => {
           <TabsContent value="preview" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Free Preview - First 3 Chapters</CardTitle>
+                <CardTitle>Free Preview Chapters</CardTitle>
                 <CardDescription>
                   Get a taste of the story before you buy. Full book access available after purchase.
                 </CardDescription>
@@ -359,7 +347,7 @@ const BookDetail = () => {
                       ) : (
                         <ShoppingCart className="h-4 w-4 mr-2" />
                       )}
-                      {purchasing ? "Processing..." : `Buy Full Book - $${book.price}`}
+                      {purchasing ? "Processing..." : `Buy Full Book - KSH ${book.price}`}
                     </Button>
                   )}
                 </div>

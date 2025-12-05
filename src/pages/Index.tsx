@@ -223,7 +223,7 @@ const Index = () => {
                       <Star className="h-4 w-4 fill-primary text-primary" />
                       <span className="text-sm font-medium">{book.rating}</span>
                     </div>
-                    <span className="text-lg font-bold text-primary">${Number(book.price).toFixed(2)}</span>
+                    <span className="text-lg font-bold text-primary">KSH {Number(book.price).toFixed(2)}</span>
                   </CardFooter>
                 </Link>
               </Card>

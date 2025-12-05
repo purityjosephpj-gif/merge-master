@@ -18,46 +18,89 @@ serve(async (req) => {
       throw new Error("Prompt is required");
     }
 
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openAIApiKey) {
-      throw new Error("OpenAI API key is not configured");
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) {
+      throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    let systemPrompt = "You are a helpful writing assistant for authors. Help them with creative writing, storytelling, character development, plot ideas, dialogue, and prose improvement. Be encouraging and constructive.";
+    let systemPrompt = `You are an expert writing assistant for creative authors. You help with:
+- Creative writing and storytelling
+- Character development and dialogue
+- Plot structure and pacing
+- Prose improvement and style
+- World-building and setting descriptions
+
+Be encouraging, constructive, and match the author's creative vision. Provide detailed, actionable feedback.`;
     
     if (type === "continue") {
-      systemPrompt = "You are a creative writing assistant. Continue the story naturally from where the author left off. Match the tone, style, and voice of the existing text. Write 2-3 paragraphs to continue the narrative.";
+      systemPrompt = `You are a creative writing assistant specializing in story continuation. Your job is to:
+- Continue the story naturally from where the author left off
+- Match the tone, style, voice, and pacing of the existing text
+- Maintain character consistency and plot coherence
+- Write 2-3 engaging paragraphs that flow seamlessly from the original
+- Avoid introducing major plot changes without setup`;
     } else if (type === "improve") {
-      systemPrompt = "You are an editorial assistant. Improve the given text by enhancing clarity, flow, and engagement while preserving the author's voice. Provide the improved version followed by brief notes on what was changed.";
+      systemPrompt = `You are an editorial assistant for creative writing. Your job is to:
+- Enhance clarity, flow, and reader engagement
+- Preserve the author's unique voice and style
+- Improve sentence structure and word choice
+- Fix any grammar or punctuation issues
+- Provide the improved version followed by brief notes explaining key changes`;
     } else if (type === "ideas") {
-      systemPrompt = "You are a creative brainstorming partner. Based on the given context, suggest 3-5 creative ideas for plot developments, character arcs, or story directions. Be imaginative and specific.";
+      systemPrompt = `You are a creative brainstorming partner for authors. Your job is to:
+- Generate 3-5 specific, creative ideas based on the given context
+- Suggest plot developments, character arcs, or story directions
+- Be imaginative and unexpected while staying coherent with the story
+- Provide brief explanations for each idea
+- Consider different genres and narrative possibilities`;
     }
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    console.log("Sending request to Lovable AI Gateway...");
+
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'google/gemini-2.5-flash',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: prompt }
         ],
-        max_tokens: 1500,
-        temperature: 0.7,
       }),
     });
 
     if (!response.ok) {
-      const errorData = await response.text();
-      console.error("OpenAI API error:", errorData);
-      throw new Error(`OpenAI API error: ${response.status}`);
+      const errorText = await response.text();
+      console.error("AI Gateway error:", response.status, errorText);
+      
+      if (response.status === 429) {
+        return new Response(JSON.stringify({ error: "Too many requests. Please wait a moment and try again." }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ error: "AI credits exhausted. Please add credits to continue using the AI assistant." }), {
+          status: 402,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      throw new Error(`AI Gateway error: ${response.status}`);
     }
 
     const data = await response.json();
-    const generatedText = data.choices[0].message.content;
+    const generatedText = data.choices?.[0]?.message?.content;
+
+    if (!generatedText) {
+      throw new Error("No content in AI response");
+    }
+
+    console.log("AI response generated successfully");
 
     return new Response(JSON.stringify({ response: generatedText }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

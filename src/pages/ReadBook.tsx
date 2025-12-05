@@ -39,13 +39,15 @@ const ReadBook = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user || !bookId) {
-      navigate("/auth");
+    if (!bookId) {
+      navigate("/books");
       return;
     }
 
     fetchBookData();
-    fetchBookmarks();
+    if (user) {
+      fetchBookmarks();
+    }
   }, [bookId, user]);
 
   const fetchBookData = async () => {
@@ -61,15 +63,17 @@ const ReadBook = () => {
       setFreeChaptersCount(bookData.free_chapters || 5);
     }
 
-    // Check if user purchased the book
-    const { data: purchaseData } = await supabase
-      .from("book_purchases")
-      .select("id")
-      .eq("book_id", bookId)
-      .eq("user_id", user!.id)
-      .maybeSingle();
+    // Check if user purchased the book (only if logged in)
+    if (user) {
+      const { data: purchaseData } = await supabase
+        .from("book_purchases")
+        .select("id")
+        .eq("book_id", bookId)
+        .eq("user_id", user.id)
+        .maybeSingle();
 
-    setHasPurchased(!!purchaseData);
+      setHasPurchased(!!purchaseData);
+    }
 
     // Fetch chapters
     const { data: chaptersData } = await supabase
@@ -86,11 +90,13 @@ const ReadBook = () => {
   };
 
   const fetchBookmarks = async () => {
+    if (!user) return;
+    
     const { data } = await supabase
       .from("bookmarks")
       .select("chapter_id")
       .eq("book_id", bookId)
-      .eq("user_id", user!.id);
+      .eq("user_id", user.id);
 
     if (data) {
       setBookmarks(new Set(data.map((b) => b.chapter_id)));
@@ -98,13 +104,15 @@ const ReadBook = () => {
   };
 
   const updateProgress = async (chapterId: string, chapterNumber: number) => {
+    if (!user) return;
+    
     const progressPercentage = Math.round(
       (chapterNumber / chapters.length) * 100
     );
 
     await supabase.from("reading_progress").upsert(
       {
-        user_id: user!.id,
+        user_id: user.id,
         book_id: bookId!,
         chapter_id: chapterId,
         progress_percentage: progressPercentage,
@@ -115,6 +123,11 @@ const ReadBook = () => {
   };
 
   const toggleBookmark = async (chapterId: string) => {
+    if (!user) {
+      toast.error("Please sign in to bookmark chapters");
+      return;
+    }
+    
     const isBookmarked = bookmarks.has(chapterId);
 
     if (isBookmarked) {
@@ -122,7 +135,7 @@ const ReadBook = () => {
         .from("bookmarks")
         .delete()
         .eq("chapter_id", chapterId)
-        .eq("user_id", user!.id);
+        .eq("user_id", user.id);
 
       if (!error) {
         setBookmarks((prev) => {
@@ -134,7 +147,7 @@ const ReadBook = () => {
       }
     } else {
       const { error } = await supabase.from("bookmarks").insert({
-        user_id: user!.id,
+        user_id: user.id,
         book_id: bookId!,
         chapter_id: chapterId,
       });
