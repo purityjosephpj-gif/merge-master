@@ -63,31 +63,37 @@ export const WriterApprovals = () => {
   };
 
   const approveWriter = async (userId: string) => {
-    // Update profile
-    const { error: profileError } = await supabase
-      .from("profiles")
-      .update({ writer_approved: true })
-      .eq("id", userId);
+    try {
+      // Update profile first
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({ writer_approved: true })
+        .eq("id", userId);
 
-    if (profileError) {
-      toast.error("Failed to approve writer");
-      return;
+      if (profileError) {
+        console.error("Profile update error:", profileError);
+        toast.error("Failed to update profile");
+        return;
+      }
+
+      // Use security definer function to assign writer role
+      const { error: roleError } = await supabase.rpc("assign_user_role", {
+        _user_id: userId,
+        _role: "writer" as const,
+      });
+
+      if (roleError) {
+        console.error("Role assignment error:", roleError);
+        toast.error("Failed to assign writer role: " + roleError.message);
+        return;
+      }
+
+      toast.success("Writer approved successfully!");
+      await fetchRequests();
+    } catch (error) {
+      console.error("Approval error:", error);
+      toast.error("An error occurred during approval");
     }
-
-    // Use security definer function to assign writer role
-    const { error: roleError } = await supabase.rpc("assign_user_role", {
-      _user_id: userId,
-      _role: "writer" as const,
-    });
-
-    if (roleError) {
-      console.error("Role assignment error:", roleError);
-      toast.error("Failed to assign writer role");
-      return;
-    }
-
-    toast.success("Writer approved successfully");
-    fetchRequests();
   };
 
   const rejectWriter = async (userId: string) => {

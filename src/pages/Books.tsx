@@ -176,7 +176,7 @@ const Books = () => {
                     <CardDescription className="mt-1">by {book.author}</CardDescription>
                   </CardHeader>
                   <CardFooter className="flex items-center justify-between pt-0">
-                    <span className="text-xl font-bold text-primary">${Number(book.price).toFixed(2)}</span>
+                    <span className="text-xl font-bold text-primary">KSH {Number(book.price).toFixed(2)}</span>
                     <Button size="sm" variant="secondary" className="group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
                       View Book
                     </Button>

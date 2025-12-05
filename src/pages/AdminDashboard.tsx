@@ -422,7 +422,7 @@ const AdminDashboard = () => {
                             {book.status}
                           </Badge>
                         </TableCell>
-                        <TableCell>${Number(book.price).toFixed(2)}</TableCell>
+                        <TableCell>KSH {Number(book.price).toFixed(2)}</TableCell>
                         <TableCell>{new Date(book.created_at).toLocaleDateString()}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">

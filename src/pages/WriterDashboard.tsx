@@ -367,7 +367,7 @@ const WriterDashboard = () => {
                               <span>•</span>
                               <span>{book.free_chapters} free</span>
                               <span>•</span>
-                              <span>${book.price}</span>
+                              <span>KSH {book.price}</span>
                               <span>•</span>
                               <Badge variant={book.status === "published" ? "default" : "secondary"}>
                                 {book.status}
