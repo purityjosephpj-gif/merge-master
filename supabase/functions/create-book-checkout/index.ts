@@ -43,19 +43,19 @@ serve(async (req) => {
       customerId = customers.data[0].id;
     }
 
-    // Create a checkout session with dynamic price
+    // Create a checkout session with dynamic price in KSH
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
       line_items: [
         {
           price_data: {
-            currency: "usd",
+            currency: "kes",
             product_data: {
               name: bookTitle,
               description: `Full access to "${bookTitle}"`,
             },
-            unit_amount: Math.round(price * 100), // Convert to cents
+            unit_amount: Math.round(price * 100), // Convert to cents (KES uses smallest unit)
           },
           quantity: 1,
         },
