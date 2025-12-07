@@ -13,6 +13,9 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        serif: ['"Times New Roman"', 'Times', 'serif'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -59,6 +62,12 @@ export default {
         },
         writer: {
           amber: "hsl(var(--writer-amber))",
+        },
+        header: {
+          bg: "hsl(var(--header-bg))",
+        },
+        content: {
+          bg: "hsl(var(--content-bg))",
         },
       },
       borderRadius: {
