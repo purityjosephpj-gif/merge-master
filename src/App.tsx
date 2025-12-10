@@ -19,6 +19,8 @@ import About from "./pages/About";
 import Contact from "./pages/Contact";
 import FAQ from "./pages/FAQ";
 import NotFound from "./pages/NotFound";
+import Install from "./pages/Install";
+import { InstallPWA } from "@/components/InstallPWA";
 
 const queryClient = new QueryClient();
 
@@ -47,9 +49,11 @@ const App = () => (
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/faq" element={<FAQ />} />
+          <Route path="/install" element={<Install />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
+        <InstallPWA />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
